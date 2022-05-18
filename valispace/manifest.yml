@@ -1,0 +1,36 @@
+modules:
+  'jira:projectPage':
+    #   - key: valispace-project-page
+    #     function: main
+    #     title: valispace-project-page
+    # 'jira:adminPage':
+    - key: valispace-sync-config-page
+      function: config
+      title: Valispace
+  function:
+    # - key: main
+    #   handler: index.run
+    - key: config
+      handler: config.run
+
+app:
+  id: ari:cloud:ecosystem::app/af315e01-c90c-42b8-a656-2e18b934c30b
+permissions:
+  scopes:
+    - write:issue:jira
+    - write:comment:jira
+    - write:comment.property:jira
+    - write:attachment:jira
+    - read:issue:jira
+    - storage:app
+    - read:comment:jira
+    - read:comment.property:jira
+    - read:group:jira
+    - read:project:jira
+    - read:project-role:jira
+    - read:user:jira
+    - read:avatar:jira
+  external:
+    fetch:
+      backend:
+        - "*.valispace.com"
