@@ -51,6 +51,8 @@ export const getFilteredRequirements = async () => {
 }
 
 export const getVerificationActivities = async (project_id) => {
+    const new_requirements = [];
+
     // allow importing from all projects if project_id <= 0
     const project_url = isNaN(project_id) == false && project_id > 0 ? `?project=${project_id}` : '';
 
@@ -66,6 +68,8 @@ export const getVerificationActivities = async (project_id) => {
         }
     }
 
+    console.log(`final_id = ${final_id}`);
+
     // get verification statuses
     // result = await requestValispace('requirements/verification-statuses/', 'GET');
     // const verification_statuses = result.json();
@@ -79,6 +83,8 @@ export const getVerificationActivities = async (project_id) => {
         verification_methods_by_id[verification_method['id']] = verification_methods[i]
     }
 
+    console.log(`verification_methods_by_id = ${verification_methods_by_id}`);
+
     // get project requirements
     result = await requestValispace(`requirements/${project_url}`);
     const project_requirements = result.json();
@@ -90,6 +96,8 @@ export const getVerificationActivities = async (project_id) => {
         if (requirement['state'] != final_id) {
             continue;
         }
+
+        console.log(`project_requirements[${i}] = $requirement`);
 
         // for all verification methods
         const vm_ids = requirement['verification_methods'];
@@ -107,11 +115,32 @@ export const getVerificationActivities = async (project_id) => {
                 result = await requestValispace(`components/${cvms['component']}`);
                 component = result.json();
 
-                // generate task text
+                // generate task data
                 const task_text = `${requirement['identifier']}, ${verification_method_name}, ${component['name']}`;
+                console.log(`Imaginary task: ${task_text}`);
 
-                createTask(task_text);
+                const card_data = {
+                    "fields": {
+                        "summary": requirement['identifier'],
+                        "project": {
+                            "key": "VTS2"
+                        },
+                        "issuetype": {
+                            "id": "10005"
+                        },
+                    },
+                    "properties": [
+                        {
+                            "key" : "valiReq" ,
+                            "value": `${requirement['id']}`
+                        }
+                    ]
+                };
+
+                new_requirements.push(card_data);
             }
         }
     }
+
+    return new_requirements;
 }

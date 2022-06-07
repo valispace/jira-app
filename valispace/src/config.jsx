@@ -2,8 +2,9 @@
 
 import ForgeUI, { render, useState, Button, ProjectPage, Fragment, Text } from '@forge/ui';
 import api, { route, storage, fetch } from '@forge/api';
-import { getFilteredRequirements} from './valispace';
+import { getFilteredRequirement, getVerificationActivities } from './valispace';
 import { HtmlToADF } from './utils';
+import { VALISPACE_PROJECT } from './constants';
 
 
 const LinkedReqsText = ( {number} ) => {
@@ -12,6 +13,7 @@ const LinkedReqsText = ( {number} ) => {
     }
     return false;
 }
+
 const buildCardFromReq = ( data ) => {
     return {
         "fields": {
@@ -32,6 +34,7 @@ const buildCardFromReq = ( data ) => {
     };
 
 }
+
 const bulkCreateCards = async ( data ) => {
     return api.asApp().requestJira(route`/rest/api/3/issue/bulk`, {
         method: 'POST',
@@ -60,17 +63,28 @@ const App = () => {
 
 
     const onButtonPress = async () => {
+        /*
         const filter_data = await getFilteredRequirements();
         setLinkedReq(filter_data.length);
         // console.log(buildCardFromReq(filter_data[0]));
         await createCardsFromRequirements(filter_data);
+        */
+
+        const new_reqs = await getVerificationActivities(VALISPACE_PROJECT);
+
+        const bulk_update_format = {
+            "issueUpdates": new_reqs,
+        };
+
+        await bulkCreateCards(JSON.stringify(bulk_update_format));
     }
+
 
 
     return (
         <Fragment>
             <LinkedReqsText number={linkedReq} />
-            <Button onClick={onButtonPress} text="Sync Valispace"></Button>
+            <Button onClick={onButtonPress} text="Initial Valispace Sync xx"></Button>
         </Fragment>
     )
 }
