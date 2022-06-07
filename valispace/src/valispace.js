@@ -51,8 +51,11 @@ export const getFilteredRequirements = async () => {
 }
 
 export const getVerificationActivities = async (project_id) => {
+    // allow importing from all projects if project_id <= 0
+    const project_url = isNaN(project_id) == false && project_id > 0 ? `?project=${project_id}` : '';
+
     // get final state id
-    let result = await requestValispace(`requirements/states/?project=${project_id}`, 'GET');
+    let result = await requestValispace(`requirements/states/${project_url}`, 'GET');
     const states = result.json();
     let final_id = -1;
     for (let i in states) {
@@ -67,7 +70,7 @@ export const getVerificationActivities = async (project_id) => {
     // result = await requestValispace('requirements/verification-statuses/', 'GET');
     // const verification_statuses = result.json();
 
-    result = await requestValispace(`requirements/verification-methods/?project=${project_id}`, 'GET');
+    result = await requestValispace(`requirements/verification-methods/${project_url}`, 'GET');
     const verification_methods = result.json();
 
     const verification_methods_by_id = {}
@@ -77,7 +80,7 @@ export const getVerificationActivities = async (project_id) => {
     }
 
     // get project requirements
-    result = await requestValispace(`requirements/?project=${project_id}`);
+    result = await requestValispace(`requirements/${project_url}`);
     const project_requirements = result.json();
 
     for (let i in project_requirements) {
