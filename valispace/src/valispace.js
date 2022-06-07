@@ -32,6 +32,7 @@ const getStates = async () => {
     const result = await requestValispace('rest/requirements/states/', 'GET');
     return result.json();
 }
+
 const getSpecificState = async (state) => {
     //Returns only one state with provided name
     let data = await getStates();
@@ -47,4 +48,60 @@ export const getFilteredRequirements = async () => {
     const data = await downloadRequirements();
     const final_state = await getSpecificState('final');
     return data.filter( element => element.state === final_state.id);
+}
+
+export const getVerificationActivities = async (project_id) => {
+    // get final state id
+    let result = await requestValispace(`requirements/states/?project=${project_id}`, 'GET');
+    const states = result.json();
+    let final_id = -1;
+    for (let i in states) {
+        const state = states[i];
+        if (state['name'] == 'Final') {
+            final_id = state['id'];
+            break;
+        }
+    }
+
+    // get verification statuses
+    // result = await requestValispace('requirements/verification-statuses/', 'GET');
+    // const verification_statuses = result.json();
+
+    result = await requestValispace(`requirements/verification-methods/?project=${project_id}`, 'GET');
+    const verification_methods = result.json();
+
+    const verification_methods_by_id = {}
+    for (let i in verification_methods) {
+        const verification_method = verification_methods[i];
+        verification_methods_by_id[verification_method['id']] = verification_methods[i]
+    }
+
+    // get project requirements
+    result = await requestValispace(`requirements/?project=${project_id}`);
+    const project_requirements = result.json();
+
+    for (i in project_requirements) {
+        const requirement = project_requirements[i];
+        if (requirement['state'] == final_id) {
+            const vm_ids = requirement['verification_methods'];
+            for (j in vm_ids) {
+                const vm_id = vm_ids[j];
+                result = await requestValispace(`requirements/requirement-vms/?ids=${vm_id}`);
+                const vm = result.json()[0];
+                const verification_method_name = verification_methods_by_id[vm['method']]['name'];
+
+                for (k in vm['component_vms']) {
+                    const component_vms_id = vm['component_vms'][k];
+                    result = vs.get(`requirements/component-vms/${component_vms_id}`);
+                    cvms = result.json();
+                    result = vs.get(`components/${cvms['component']}`);
+                    component = result.json();
+
+                    const task_text = `${requirement['identifier']}, ${verification_method_name}, ${component['name']}`;
+
+                    createTask(task_text);
+                }
+            }
+        }
+    }
 }
