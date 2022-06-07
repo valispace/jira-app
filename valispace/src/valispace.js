@@ -80,27 +80,34 @@ export const getVerificationActivities = async (project_id) => {
     result = await requestValispace(`requirements/?project=${project_id}`);
     const project_requirements = result.json();
 
-    for (i in project_requirements) {
+    for (let i in project_requirements) {
         const requirement = project_requirements[i];
-        if (requirement['state'] == final_id) {
-            const vm_ids = requirement['verification_methods'];
-            for (j in vm_ids) {
-                const vm_id = vm_ids[j];
-                result = await requestValispace(`requirements/requirement-vms/?ids=${vm_id}`);
-                const vm = result.json()[0];
-                const verification_method_name = verification_methods_by_id[vm['method']]['name'];
 
-                for (k in vm['component_vms']) {
-                    const component_vms_id = vm['component_vms'][k];
-                    result = vs.get(`requirements/component-vms/${component_vms_id}`);
-                    cvms = result.json();
-                    result = vs.get(`components/${cvms['component']}`);
-                    component = result.json();
+        // skip requirements that aren't final
+        if (requirement['state'] != final_id) {
+            continue;
+        }
 
-                    const task_text = `${requirement['identifier']}, ${verification_method_name}, ${component['name']}`;
+        // for all verification methods
+        const vm_ids = requirement['verification_methods'];
+        for (let j in vm_ids) {
+            const vm_id = vm_ids[j];
+            result = await requestValispace(`requirements/requirement-vms/?ids=${vm_id}`);
+            const vm = result.json()[0];
+            const verification_method_name = verification_methods_by_id[vm['method']]['name'];
 
-                    createTask(task_text);
-                }
+            // for all components in verification method
+            for (let k in vm['component_vms']) {
+                const component_vms_id = vm['component_vms'][k];
+                result = await requestValispace(`requirements/component-vms/${component_vms_id}`);
+                cvms = result.json();
+                result = await requestValispace(`components/${cvms['component']}`);
+                component = result.json();
+
+                // generate task text
+                const task_text = `${requirement['identifier']}, ${verification_method_name}, ${component['name']}`;
+
+                createTask(task_text);
             }
         }
     }
