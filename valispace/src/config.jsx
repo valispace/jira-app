@@ -43,7 +43,7 @@ const bulkCreateCards = async ( data ) => {
           'Content-Type': 'application/json'
         },
         body: data
-      });
+    });
 }
 
 const createCardsFromRequirements = async ( reqs ) => {
@@ -70,21 +70,23 @@ const App = () => {
         await createCardsFromRequirements(filter_data);
         */
 
-        const new_reqs = await getVerificationActivities(VALISPACE_PROJECT);
+        const new_reqs = await getVerificationActivities();
 
         const bulk_update_format = {
             "issueUpdates": new_reqs,
         };
 
-        await bulkCreateCards(JSON.stringify(bulk_update_format));
-    }
+        console.log(JSON.stringify(bulk_update_format));
 
+        const result = await bulkCreateCards(JSON.stringify(bulk_update_format));
+        console.log(await result.text());
+    }
 
 
     return (
         <Fragment>
             <LinkedReqsText number={linkedReq} />
-            <Button onClick={onButtonPress} text="Initial Valispace Sync xx"></Button>
+            <Button onClick={onButtonPress} text="Initial Valispace Sync"></Button>
         </Fragment>
     )
 }

@@ -3,9 +3,16 @@ import { VALISPACE_URL, VALISPACE_TOKEN, VALISPACE_USERNAME, VALISPACE_PROJECT }
 import { fetch } from '@forge/api';
 
 
-const requestValispace = async ( path, method = 'GET') => {
+const requestValispace = async ( path, method = 'GET', url_params = {}) => {
+    const url = new URL(VALISPACE_URL + path);
+    url.searchParams.append('project', VALISPACE_PROJECT);
+
+    for (let i in url_params) {
+        url.searchParams.append(i, url_params[i]);
+    }
+
     return fetch(
-        VALISPACE_URL + path + '?project=' + VALISPACE_PROJECT, {
+        url.toString(), {
         method: method,
         headers: {
             'Authorization': 'Bearer ' + VALISPACE_TOKEN
@@ -50,15 +57,12 @@ export const getFilteredRequirements = async () => {
     return data.filter( element => element.state === final_state.id);
 }
 
-export const getVerificationActivities = async (project_id) => {
+export const getVerificationActivities = async () => {
     const new_requirements = [];
 
-    // allow importing from all projects if project_id <= 0
-    const project_url = isNaN(project_id) == false && project_id > 0 ? `?project=${project_id}` : '';
-
     // get final state id
-    let result = await requestValispace(`requirements/states/${project_url}`, 'GET');
-    const states = result.json();
+    let result = await requestValispace(`rest/requirements/states/`, 'GET');
+    const states = await result.json();
     let final_id = -1;
     for (let i in states) {
         const state = states[i];
@@ -68,26 +72,22 @@ export const getVerificationActivities = async (project_id) => {
         }
     }
 
-    console.log(`final_id = ${final_id}`);
-
     // get verification statuses
-    // result = await requestValispace('requirements/verification-statuses/', 'GET');
+    // result = await requestValispace('rest/requirements/verification-statuses/', 'GET');
     // const verification_statuses = result.json();
 
-    result = await requestValispace(`requirements/verification-methods/${project_url}`, 'GET');
-    const verification_methods = result.json();
+    result = await requestValispace(`rest/requirements/verification-methods/`, 'GET');
+    const verification_methods = await result.json();
 
-    const verification_methods_by_id = {}
+    const verification_methods_by_id = {};
     for (let i in verification_methods) {
         const verification_method = verification_methods[i];
         verification_methods_by_id[verification_method['id']] = verification_methods[i]
     }
 
-    console.log(`verification_methods_by_id = ${verification_methods_by_id}`);
-
     // get project requirements
-    result = await requestValispace(`requirements/${project_url}`);
-    const project_requirements = result.json();
+    result = await requestValispace('rest/requirements/');
+    const project_requirements = await result.json();
 
     for (let i in project_requirements) {
         const requirement = project_requirements[i];
@@ -97,23 +97,22 @@ export const getVerificationActivities = async (project_id) => {
             continue;
         }
 
-        console.log(`project_requirements[${i}] = $requirement`);
-
         // for all verification methods
         const vm_ids = requirement['verification_methods'];
         for (let j in vm_ids) {
             const vm_id = vm_ids[j];
-            result = await requestValispace(`requirements/requirement-vms/?ids=${vm_id}`);
-            const vm = result.json()[0];
+            result = await requestValispace(`rest/requirements/requirement-vms/`, 'GET', {"ids": vm_id});
+            const vms = await result.json();
+            const vm = vms[0];
             const verification_method_name = verification_methods_by_id[vm['method']]['name'];
 
             // for all components in verification method
             for (let k in vm['component_vms']) {
                 const component_vms_id = vm['component_vms'][k];
-                result = await requestValispace(`requirements/component-vms/${component_vms_id}`);
-                cvms = result.json();
-                result = await requestValispace(`components/${cvms['component']}`);
-                component = result.json();
+                result = await requestValispace(`rest/requirements/component-vms/${component_vms_id}`);
+                const cvms = await result.json();
+                result = await requestValispace(`rest/components/${cvms['component']}`);
+                const component = await result.json();
 
                 // generate task data
                 const task_text = `${requirement['identifier']}, ${verification_method_name}, ${component['name']}`;
@@ -121,17 +120,18 @@ export const getVerificationActivities = async (project_id) => {
 
                 const card_data = {
                     "fields": {
-                        "summary": requirement['identifier'],
+                        "summary": task_text,
                         "project": {
-                            "key": "VTS2"
+                            "key": "VTS"
                         },
                         "issuetype": {
-                            "id": "10005"
+                            "id": "10001",
+                            "description": task_text
                         },
                     },
                     "properties": [
                         {
-                            "key" : "valiReq" ,
+                            "key" : "valiReq",
                             "value": `${requirement['id']}`
                         }
                     ]
