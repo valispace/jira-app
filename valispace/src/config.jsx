@@ -4,7 +4,6 @@ import ForgeUI, { render, useState, Button, ProjectPage, Fragment, Text } from '
 import api, { route, storage, fetch } from '@forge/api';
 import { getFilteredRequirement, getVerificationActivities } from './valispace';
 import { HtmlToADF } from './utils';
-import { VALISPACE_PROJECT } from './constants';
 
 
 const LinkedReqsText = ( {number} ) => {
@@ -108,7 +107,8 @@ const App = () => {
         await createCardsFromRequirements(filter_data);
         */
 
-        const new_reqs = await getVerificationActivities();
+        let new_reqs = await getVerificationActivities();
+        new_reqs = Object.values(new_reqs);
 
         console.log("new_reqs", new_reqs);
 
@@ -132,6 +132,44 @@ const App = () => {
         const req_mapping = await getValiReqMapping('VTS');
 
         console.log(JSON.stringify(req_mapping, null, '\t'));
+
+        const reqs = await getVerificationActivities();
+
+        const new_reqs = [];
+
+        for (let identifier in reqs) {
+            if (idenfitier in req_mapping) {
+                // apparently there's no bulk update in jira
+
+                const data = xxxxxxx;
+
+                api.asApp().requestJira(route`/rest/api/3/issue/${req_mapping[reqs[identifier]]}`, {
+                    method: 'PUT',
+                    headers: {
+                      'Accept': 'application/json',
+                      'Content-Type': 'application/json'
+                    },
+                    body: data
+                });
+            }
+            else {
+                new_reqs.push(reqs[identifier]);
+            }
+        }
+
+        if (new_reqs.length > 0) {
+            const bulk_update_format = {
+                "issueUpdates": new_reqs,
+            };
+
+            console.log(JSON.stringify(bulk_update_format));
+
+            const result = await bulkCreateCards(JSON.stringify(bulk_update_format));
+            console.log(await result.text());
+        }
+        else {
+            console.log("No new requirements.");
+        }
     }
 
 

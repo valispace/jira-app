@@ -58,7 +58,7 @@ export const getFilteredRequirements = async () => {
 }
 
 export const getVerificationActivities = async () => {
-    const new_requirements = [];
+    const new_requirements = {};
 
     // get final state id
     let result = await requestValispace(`rest/requirements/states/`, 'GET');
@@ -141,7 +141,7 @@ export const getVerificationActivities = async () => {
                     ]
                 };
 
-                new_requirements.push(card_data);
+                new_requirements[requirement['identifier']] = card_data;
             }
         }
     }
