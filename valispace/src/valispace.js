@@ -43,7 +43,7 @@ const getStates = async () => {
 const getSpecificState = async (state) => {
     //Returns only one state with provided name
     let data = await getStates();
-    console.log(data)
+    // console.log(data)
     data = data.filter( element => element.name.toLowerCase() === state);
     if ( data.length == 1 ){
         return data[0];
@@ -89,8 +89,6 @@ export const getVerificationActivities = async () => {
     result = await requestValispace('rest/requirements/');
     const project_requirements = await result.json();
 
-    console.log("project_requirements", project_requirements);
-
     for (let i in project_requirements) {
         const requirement = project_requirements[i];
 
@@ -98,8 +96,6 @@ export const getVerificationActivities = async () => {
         if (requirement['state'] != final_id) {
             continue;
         }
-
-        console.log("requirement", requirement);
 
         // for all verification methods
         const vm_ids = requirement['verification_methods'];
@@ -120,7 +116,7 @@ export const getVerificationActivities = async () => {
 
                 // generate task data
                 const task_text = `${requirement['identifier']}, ${verification_method_name}, ${component['name']}`;
-                console.log(`Imaginary task: ${task_text}`);
+                // console.log(`Imaginary task: ${task_text}`);
 
                 const card_data = {
                     "fields": {

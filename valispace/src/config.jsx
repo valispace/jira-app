@@ -48,7 +48,7 @@ const getValiReqMapping = async (project_name) => {
     const data = await result.json();
 
     for (let issue of data.issues) {
-        console.log(`Issue: ${issue.key}`);
+        // console.log(`Issue: ${issue.key}`);
 
         result = await api.asApp().requestJira(route`/rest/api/3/issue/${issue.key}/properties/valiReq`, {
             method: 'GET',
@@ -62,7 +62,7 @@ const getValiReqMapping = async (project_name) => {
 
         const req_identifier = props.value.identifier;
 
-        console.log(req_identifier);
+        // console.log(req_identifier);
 
         req_mapping[req_identifier] = issue.key;
     }
@@ -130,27 +130,43 @@ const App = () => {
 
     const updateClick = async () => {
         const req_mapping = await getValiReqMapping('VTS');
-
-        console.log(JSON.stringify(req_mapping, null, '\t'));
-
         const reqs = await getVerificationActivities();
 
         const new_reqs = [];
 
         for (let identifier in reqs) {
-            if (idenfitier in req_mapping) {
+            if (identifier in req_mapping) {
                 // apparently there's no bulk update in jira
+                const data = reqs[identifier];
 
-                const data = xxxxxxx;
+                console.log(JSON.stringify(data, null, '\t'));
 
-                api.asApp().requestJira(route`/rest/api/3/issue/${req_mapping[reqs[identifier]]}`, {
+                console.log(`identifier = ${identifier}`);
+                console.log(`reqs[identifier] = ${reqs[identifier]}`);
+                console.log(`req_mapping[identifier] = ${req_mapping[identifier]}`);
+
+                /*let result = await api.asApp().requestJira(route`/rest/api/3/issue/${req_mapping[identifier]}`, {
+                    method: 'GET',
+                    headers: {
+                      'Accept': 'application/json',
+                      'Content-Type': 'application/json'
+                    }
+                });
+
+                console.log(await result.text());*/
+
+                console.log(`/rest/api/3/issue/${req_mapping[identifier]}`);
+
+                let result = await api.asApp().requestJira(route`/rest/api/3/issue/${req_mapping[identifier]}`, {
                     method: 'PUT',
                     headers: {
                       'Accept': 'application/json',
                       'Content-Type': 'application/json'
                     },
-                    body: data
+                    body: JSON.stringify(data)
                 });
+
+                console.log(await result.text());
             }
             else {
                 new_reqs.push(reqs[identifier]);
@@ -162,7 +178,7 @@ const App = () => {
                 "issueUpdates": new_reqs,
             };
 
-            console.log(JSON.stringify(bulk_update_format));
+            // console.log(JSON.stringify(bulk_update_format));
 
             const result = await bulkCreateCards(JSON.stringify(bulk_update_format));
             console.log(await result.text());
