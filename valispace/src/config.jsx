@@ -62,7 +62,7 @@ const App = () => {
     const [linkedReq, setLinkedReq] = useState(0);
 
 
-    const onButtonPress = async () => {
+    const initialSyncClick = async () => {
         /*
         const filter_data = await getFilteredRequirements();
         setLinkedReq(filter_data.length);
@@ -83,10 +83,17 @@ const App = () => {
     }
 
 
+    const updateClick = async () => {
+        // ...
+    }
+
+
     return (
         <Fragment>
             <LinkedReqsText number={linkedReq} />
-            <Button onClick={onButtonPress} text="Initial Valispace Sync"></Button>
+            <Button onClick={initialSyncClick} text="Initial Valispace Sync"></Button>
+            <br/>
+            <Button onClick={updateClick} text="Initial Valispace Sync"></Button>
         </Fragment>
     )
 }
