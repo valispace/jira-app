@@ -13,6 +13,14 @@ modules:
     - key: config
       handler: config.run
 
+  jira:entityProperty:
+    - key: "vali-req-indexing"
+      entityType: "issue"
+      propertyKey: valiReq
+      values:
+        - path: identifier
+          type: text
+
 app:
   id: ari:cloud:ecosystem::app/af315e01-c90c-42b8-a656-2e18b934c30b
 permissions:
@@ -22,6 +30,7 @@ permissions:
     - write:comment.property:jira
     - write:attachment:jira
     - read:issue:jira
+    - read:jira-work
     - storage:app
     - read:comment:jira
     - read:comment.property:jira

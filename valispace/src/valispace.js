@@ -89,6 +89,8 @@ export const getVerificationActivities = async () => {
     result = await requestValispace('rest/requirements/');
     const project_requirements = await result.json();
 
+    console.log("project_requirements", project_requirements);
+
     for (let i in project_requirements) {
         const requirement = project_requirements[i];
 
@@ -96,6 +98,8 @@ export const getVerificationActivities = async () => {
         if (requirement['state'] != final_id) {
             continue;
         }
+
+        console.log("requirement", requirement);
 
         // for all verification methods
         const vm_ids = requirement['verification_methods'];
@@ -132,7 +136,7 @@ export const getVerificationActivities = async () => {
                     "properties": [
                         {
                             "key" : "valiReq",
-                            "value": `${requirement['id']}`
+                            "value": {"identifier": requirement['identifier']}
                         }
                     ]
                 };
