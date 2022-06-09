@@ -2,7 +2,7 @@ import { VALISPACE_URL, VALISPACE_TOKEN, VALISPACE_USERNAME, VALISPACE_PROJECT }
 import { fetch } from '@forge/api';
 
 
-const requestValispace = async ( path, method = 'GET', url_params = {}) => {
+const requestValispace = async ( path, method = 'GET', url_params = {}, data = null ) => {
     const url = new URL(VALISPACE_URL + path);
     url.searchParams.append('project', VALISPACE_PROJECT);
 
@@ -10,13 +10,19 @@ const requestValispace = async ( path, method = 'GET', url_params = {}) => {
         url.searchParams.append(i, url_params[i]);
     }
 
-    return fetch(
-        url.toString(), {
+    const fetch_options = {
         method: method,
         headers: {
             'Authorization': 'Bearer ' + VALISPACE_TOKEN
         }
-    })
+    };
+
+    if (data !== null) {
+        fetch_options['data'] = data;
+    }
+
+    return fetch(
+        url.toString(), fetch_options);
 }
 
 const downloadRequirements = async () => {
@@ -57,7 +63,15 @@ export const getFilteredRequirements = async () => {
 }
 
 export const valiReqIdentifier = (props) => {
-    return `${props.value.requirement_id},${props.value.verification_method_id},${props.value.component_vms_id}`;
+    if ('value' in props &&
+    'requirement_id' in props.value &&
+    'verification_method_id' in props.value &&
+    'component_vms_id' in props.value) {
+        return `${props.value.requirement_id},${props.value.verification_method_id},${props.value.component_vms_id}`;
+    }
+    else {
+        return null
+    }
 }
 
 export const getVerificationActivities = async () => {
@@ -83,7 +97,7 @@ export const getVerificationActivities = async () => {
 
     const verification_methods_by_id = {};
     for (let verification_method of verification_methods) {
-        verification_methods_by_id[verification_method['id']] = verification_methods;
+        verification_methods_by_id[verification_method['id']] = verification_method;
     }
 
     // get project requirements
@@ -103,6 +117,8 @@ export const getVerificationActivities = async () => {
             const vms = await result.json();
             const vm = vms[0];
             const verification_method_name = verification_methods_by_id[vm['method']]['name'];
+
+            console.log(`verification_method_name = ${verification_method_name}`);
 
             // for all components in verification method
             for (let component_vms_id of vm['component_vms']) {

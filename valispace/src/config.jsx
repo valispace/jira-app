@@ -76,7 +76,9 @@ const getValiReqMapping = async (project_name) => {
 
         // console.log(req_identifier);
 
-        req_mapping[req_identifier] = issue.key;
+        if (req_identifier != null) {
+            req_mapping[req_identifier] = issue.key;
+        }
     }
 
     return req_mapping;
@@ -128,6 +130,7 @@ const App = () => {
 
         const new_reqs = [];
 
+        // identifier is a mix of different ids
         for (let identifier in reqs) {
             if (identifier in req_mapping) {
                 // apparently there's no bulk update in jira
@@ -213,6 +216,17 @@ export async function issueUpdate(event, context) {
             'resolution'
             if (change.field == 'status' || change.fieldId == 'status') {
                 console.log("New status...");
+
+                let result = await getIssueValiReq(event.issue.key);
+                const props = await result.json();
+                const req_identifier = props.value.identifier;
+
+                const request_data = {
+                    'comment': `$(change.fromString) -> $(change.toString)`,
+                };
+
+                result = await requestValispace(`rest/requirements/${req_identifier}/`, 'PATCH', {}, request_data);
+                console.log(result.text());
             } else if (change.field == 'resolution' || change.fieldId == 'resolution') {
                 console.log("New resolution...");
             } else if (change.field == 'description' || change.fieldId == 'description') {
@@ -226,11 +240,4 @@ export async function issueUpdate(event, context) {
             }
         }
     }
-
-    let result = await getIssueValiReq(event.issue.key);
-    const props = await result.json();
-    const req_identifier = props.value.identifier;
-
-    // result = await requestValispace(`rest/requirements/${req_identifier}/`, 'PUT', data);
-    // return result.json();
 }
