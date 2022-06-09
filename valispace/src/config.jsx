@@ -2,7 +2,7 @@
 
 import ForgeUI, { render, useState, Button, ProjectPage, Fragment, Text } from '@forge/ui';
 import api, { route, storage, fetch } from '@forge/api';
-import { getFilteredRequirement, getVerificationActivities } from './valispace';
+import { getFilteredRequirement, getVerificationActivities, requestValispace } from './valispace';
 import { HtmlToADF } from './utils';
 
 
@@ -36,6 +36,16 @@ const buildCardFromReq = ( data ) => {
 }
 */
 
+const getIssueValiReq = async ( issue_key ) => {
+    return api.asApp().requestJira(route`/rest/api/3/issue/${issue_key}/properties/valiReq`, {
+        method: 'GET',
+        headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+        }
+    });
+}
+
 const getValiReqMapping = async (project_name) => {
     const req_mapping = {};
 
@@ -52,16 +62,8 @@ const getValiReqMapping = async (project_name) => {
     for (let issue of data.issues) {
         // console.log(`Issue: ${issue.key}`);
 
-        result = await api.asApp().requestJira(route`/rest/api/3/issue/${issue.key}/properties/valiReq`, {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            }
-        });
-
+        result = await getIssueValiReq(issue.key);
         const props = await result.json();
-
         const req_identifier = props.value.identifier;
 
         // console.log(req_identifier);
@@ -199,5 +201,39 @@ export const run = render(
 )
 
 export async function issueUpdate(event, context) {
-	console.log('issueUpdate', event, context);
+	console.log('issueUpdate');
+    // console.log('event:');
+    // console.log(JSON.stringify(event, null, '\t'));
+    // console.log('context:');
+    // console.log(JSON.stringify(context, null, '\t'));
+
+    const changes = event.changelog.items;
+
+    for (let change of changes) {
+        console.log(change);
+
+        if (change.fieldtype == 'jira') {
+            'resolution'
+            if (change.field == 'status' || change.fieldId == 'status') {
+                console.log("New status...");
+            } else if (change.field == 'resolution' || change.fieldId == 'resolution') {
+                console.log("New resolution...");
+            } else if (change.field == 'description' || change.fieldId == 'description') {
+                console.log("New description...");
+            } else if (change.field == 'summary' || change.fieldId == 'summary') {
+                console.log("New summary...");
+            } else if (change.field == 'labels' || change.fieldId == 'labels') {
+                console.log("New labels...");
+            } else {
+                console.log(`Unparsed change: ${change.field}, ${change.fieldId}`);
+            }
+        }
+    }
+
+    let result = await getIssueValiReq(event.issue.key);
+    const props = await result.json();
+    const req_identifier = props.value.identifier;
+
+    // result = await requestValispace(`rest/requirements/${req_identifier}/`, 'PUT', data);
+    // return result.json();
 }
