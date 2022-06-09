@@ -13,6 +13,7 @@ const LinkedReqsText = ( {number} ) => {
     return false;
 }
 
+/*
 const buildCardFromReq = ( data ) => {
     return {
         "fields": {
@@ -33,6 +34,7 @@ const buildCardFromReq = ( data ) => {
     };
 
 }
+*/
 
 const getValiReqMapping = async (project_name) => {
     const req_mapping = {};
@@ -98,15 +100,8 @@ const createCardsFromRequirements = async ( reqs ) => {
 const App = () => {
     const [linkedReq, setLinkedReq] = useState(0);
 
-
+    /*
     const initialSyncClick = async () => {
-        /*
-        const filter_data = await getFilteredRequirements();
-        setLinkedReq(filter_data.length);
-        // console.log(buildCardFromReq(filter_data[0]));
-        await createCardsFromRequirements(filter_data);
-        */
-
         let new_reqs = await getVerificationActivities();
         new_reqs = Object.values(new_reqs);
 
@@ -126,7 +121,7 @@ const App = () => {
             console.log("No new requirements.");
         }
     }
-
+    */
 
     const updateClick = async () => {
         const req_mapping = await getValiReqMapping('VTS');
@@ -192,7 +187,6 @@ const App = () => {
     return (
         <Fragment>
             <LinkedReqsText number={linkedReq} />
-            <Button onClick={initialSyncClick} text="Initial Valispace Sync"></Button>
             <Button onClick={updateClick} text="Update from Valispace"></Button>
         </Fragment>
     )
