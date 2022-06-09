@@ -1,9 +1,6 @@
-
-
 import ForgeUI, { render, useState, Button, ProjectPage, Fragment, Text } from '@forge/ui';
-import api, { route, storage, fetch } from '@forge/api';
-import { getFilteredRequirement, getVerificationActivities, requestValispace } from './valispace';
-import { HtmlToADF } from './utils';
+import api, { route } from '@forge/api';
+import { getVerificationActivities, requestValispace, valiReqIdentifier } from './valispace';
 
 
 const LinkedReqsText = ( {number} ) => {
@@ -46,10 +43,21 @@ const getIssueValiReq = async ( issue_key ) => {
     });
 }
 
+const bulkCreateCards = async ( data ) => {
+    return api.asApp().requestJira(route`/rest/api/3/issue/bulk`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: data
+    });
+}
+
 const getValiReqMapping = async (project_name) => {
     const req_mapping = {};
 
-    let result = await api.asApp().requestJira(route`/rest/api/3/search?jql=project=${project_name} and issue.property[valiReq].identifier is not empty &startAt=0&maxResults=8000&fields=issue`, {
+    let result = await api.asApp().requestJira(route`/rest/api/3/search?jql=project=${project_name} and issue.property[valiReq] is not empty &startAt=0&maxResults=8000&fields=issue`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -64,7 +72,7 @@ const getValiReqMapping = async (project_name) => {
 
         result = await getIssueValiReq(issue.key);
         const props = await result.json();
-        const req_identifier = props.value.identifier;
+        const req_identifier = valiReqIdentifier(props);
 
         // console.log(req_identifier);
 
@@ -72,17 +80,6 @@ const getValiReqMapping = async (project_name) => {
     }
 
     return req_mapping;
-}
-
-const bulkCreateCards = async ( data ) => {
-    return api.asApp().requestJira(route`/rest/api/3/issue/bulk`, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: data
-    });
 }
 
 /*

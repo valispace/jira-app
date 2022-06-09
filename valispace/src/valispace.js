@@ -56,6 +56,10 @@ export const getFilteredRequirements = async () => {
     return data.filter( element => element.state === final_state.id);
 }
 
+export const valiReqIdentifier = (props) => {
+    return `${props.value.requirement_id},${props.value.verification_method_id},${props.value.component_vms_id}`;
+}
+
 export const getVerificationActivities = async () => {
     const new_requirements = {};
 
@@ -95,7 +99,7 @@ export const getVerificationActivities = async () => {
         // for all verification methods
         const vm_ids = requirement['verification_methods'];
         for (let vm_id of vm_ids) {
-            result = await requestValispace(`rest/requirements/requirement-vms/`, 'GET', {"ids": vm_id});
+            result = await requestValispace(`rest/requirements/requirement-vms/`, 'GET', {'ids': vm_id});
             const vms = await result.json();
             const vm = vms[0];
             const verification_method_name = verification_methods_by_id[vm['method']]['name'];
@@ -112,25 +116,29 @@ export const getVerificationActivities = async () => {
                 // console.log(`Imaginary task: ${task_text}`);
 
                 const card_data = {
-                    "fields": {
-                        "summary": task_text,
-                        "project": {
-                            "key": "VTS"
+                    'fields': {
+                        'summary': task_text,
+                        'project': {
+                            'key': 'VTS'
                         },
-                        "issuetype": {
-                            "id": "10001",
-                            "description": task_text
+                        'issuetype': {
+                            'id': '10001',
+                            'description': task_text
                         },
                     },
-                    "properties": [
+                    'properties': [
                         {
-                            "key" : "valiReq",
-                            "value": {"identifier": requirement['identifier']}
+                            'key' : 'valiReq',
+                            'value': {
+                                'requirement_id': requirement['id'],
+                                'verification_method_id': vm_id,
+                                'component_vms_id': component_vms_id,
+                            }
                         }
                     ]
                 };
 
-                new_requirements[requirement['identifier']] = card_data;
+                new_requirements[valiReqIdentifier(card_data.properties)] = card_data;
             }
         }
     }

@@ -18,8 +18,12 @@ modules:
         entityType: "issue"
         propertyKey: valiReq
         values:
-          - path: identifier
-            type: text
+          - path: requirement_id
+            type: number
+          - path: verification_method_id
+            type: number
+          - path: component_vms_id
+            type: number
 
 app:
   id: ari:cloud:ecosystem::app/9fbcef2d-1c26-42ef-86a6-bd171546e786
