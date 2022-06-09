@@ -1,10 +1,9 @@
 modules:
-  trigger:
-    - key: issue-updated-event
-      function: update
-      events:
-        - avi:jira:updated:issue
   'jira:projectPage':
+    #   - key: valispace-project-page
+    #     function: main
+    #     title: valispace-project-page
+    # 'jira:adminPage':
     - key: valispace-sync-config-page
       function: config
       title: Valispace
@@ -13,8 +12,6 @@ modules:
     #   handler: index.run
     - key: config
       handler: config.run
-    - key: update
-      handler: config.issueUpdate
 
   jira:entityProperty:
     - key: "vali-req-indexing"
@@ -25,7 +22,7 @@ modules:
           type: text
 
 app:
-  id: ari:cloud:ecosystem::app/9fbcef2d-1c26-42ef-86a6-bd171546e786
+  id: ari:cloud:ecosystem::app/af315e01-c90c-42b8-a656-2e18b934c30b
 permissions:
   scopes:
     - write:issue:jira

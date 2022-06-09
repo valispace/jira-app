@@ -197,7 +197,3 @@ export const run = render(
         <App />
     </ProjectPage>
 )
-
-export async function issueUpdate(event, context) {
-	console.log('issueUpdate', event, context);
-}
