@@ -210,33 +210,34 @@ export async function issueUpdate(event, context) {
     const changes = event.changelog.items;
 
     for (let change of changes) {
-        console.log(change);
+        // console.log(change);
 
         if (change.fieldtype == 'jira') {
             'resolution'
             if (change.field == 'status' || change.fieldId == 'status') {
-                console.log("New status...");
+                // console.log("New status...");
 
                 let result = await getIssueValiReq(event.issue.key);
                 const props = await result.json();
-                const req_identifier = props.value.identifier;
+                const req_identifier = props.value.requirement_id;
 
                 const request_data = {
-                    'comment': `$(change.fromString) -> $(change.toString)`,
+                    'comment': `<p>${change.fromString} -> ${change.toString}</p>`,
                 };
 
+                console.log(`rest/requirements/${req_identifier}/`);
                 result = await requestValispace(`rest/requirements/${req_identifier}/`, 'PATCH', {}, request_data);
-                console.log(result.text());
+                console.log(await result.text());
             } else if (change.field == 'resolution' || change.fieldId == 'resolution') {
-                console.log("New resolution...");
+                // console.log("New resolution...");
             } else if (change.field == 'description' || change.fieldId == 'description') {
-                console.log("New description...");
+                // console.log("New description...");
             } else if (change.field == 'summary' || change.fieldId == 'summary') {
-                console.log("New summary...");
+                // console.log("New summary...");
             } else if (change.field == 'labels' || change.fieldId == 'labels') {
-                console.log("New labels...");
+                // console.log("New labels...");
             } else {
-                console.log(`Unparsed change: ${change.field}, ${change.fieldId}`);
+                // console.log(`Unparsed change: ${change.field}, ${change.fieldId}`);
             }
         }
     }

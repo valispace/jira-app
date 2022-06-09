@@ -2,7 +2,7 @@ import { VALISPACE_URL, VALISPACE_TOKEN, VALISPACE_USERNAME, VALISPACE_PROJECT }
 import { fetch } from '@forge/api';
 
 
-const requestValispace = async ( path, method = 'GET', url_params = {}, data = null ) => {
+export const requestValispace = async ( path, method = 'GET', url_params = {}, data = null ) => {
     const url = new URL(VALISPACE_URL + path);
     url.searchParams.append('project', VALISPACE_PROJECT);
 
@@ -18,7 +18,7 @@ const requestValispace = async ( path, method = 'GET', url_params = {}, data = n
     };
 
     if (data !== null) {
-        fetch_options['data'] = data;
+        fetch_options['body'] = JSON.stringify(data);
     }
 
     return fetch(
