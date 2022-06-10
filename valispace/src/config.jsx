@@ -1,10 +1,6 @@
-
-
 import ForgeUI, { render, useState, Button, ProjectPage, Fragment, Text } from '@forge/ui';
-import api, { route, storage, fetch } from '@forge/api';
-import { getFilteredRequirement, getVerificationActivities } from './valispace';
-import { HtmlToADF } from './utils';
-import { VALISPACE_PROJECT } from './constants';
+import api, { route } from '@forge/api';
+import { getVerificationActivities, requestValispace, valiReqIdentifier } from './valispace';
 
 
 const LinkedReqsText = ( {number} ) => {
@@ -14,6 +10,7 @@ const LinkedReqsText = ( {number} ) => {
     return false;
 }
 
+/*
 const buildCardFromReq = ( data ) => {
     return {
         "fields": {
@@ -34,6 +31,17 @@ const buildCardFromReq = ( data ) => {
     };
 
 }
+*/
+
+const getIssueValiReq = async ( issue_key ) => {
+    return api.asApp().requestJira(route`/rest/api/3/issue/${issue_key}/properties/valiReq`, {
+        method: 'GET',
+        headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+        }
+    });
+}
 
 const bulkCreateCards = async ( data ) => {
     return api.asApp().requestJira(route`/rest/api/3/issue/bulk`, {
@@ -46,6 +54,37 @@ const bulkCreateCards = async ( data ) => {
     });
 }
 
+const getValiReqMapping = async (project_name) => {
+    const req_mapping = {};
+
+    let result = await api.asApp().requestJira(route`/rest/api/3/search?jql=project=${project_name} and issue.property[valiReq] is not empty &startAt=0&maxResults=8000&fields=issue`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+    });
+
+    const data = await result.json();
+
+    for (let issue of data.issues) {
+        // console.log(`Issue: ${issue.key}`);
+
+        result = await getIssueValiReq(issue.key);
+        const props = await result.json();
+        const req_identifier = valiReqIdentifier(props);
+
+        // console.log(req_identifier);
+
+        if (req_identifier != null) {
+            req_mapping[req_identifier] = issue.key;
+        }
+    }
+
+    return req_mapping;
+}
+
+/*
 const createCardsFromRequirements = async ( reqs ) => {
     let newCards = [];
     reqs.forEach(( req ) => {
@@ -57,36 +96,100 @@ const createCardsFromRequirements = async ( reqs ) => {
     console.log(bulkUpdateFormat);
     console.log(await (await bulkCreateCards(JSON.stringify(bulkUpdateFormat))).text());
 }
+*/
 
 const App = () => {
     const [linkedReq, setLinkedReq] = useState(0);
 
+    /*
+    const initialSyncClick = async () => {
+        let new_reqs = await getVerificationActivities();
+        new_reqs = Object.values(new_reqs);
 
-    const onButtonPress = async () => {
-        /*
-        const filter_data = await getFilteredRequirements();
-        setLinkedReq(filter_data.length);
-        // console.log(buildCardFromReq(filter_data[0]));
-        await createCardsFromRequirements(filter_data);
-        */
+        console.log("new_reqs", new_reqs);
 
-        const new_reqs = await getVerificationActivities();
+        if (new_reqs.length > 0) {
+            const bulk_update_format = {
+                "issueUpdates": new_reqs,
+            };
 
-        const bulk_update_format = {
-            "issueUpdates": new_reqs,
-        };
+            console.log(JSON.stringify(bulk_update_format));
 
-        console.log(JSON.stringify(bulk_update_format));
+            const result = await bulkCreateCards(JSON.stringify(bulk_update_format));
+            console.log(await result.text());
+        }
+        else {
+            console.log("No new requirements.");
+        }
+    }
+    */
 
-        const result = await bulkCreateCards(JSON.stringify(bulk_update_format));
-        console.log(await result.text());
+    const updateClick = async () => {
+        const req_mapping = await getValiReqMapping('VTS');
+        const reqs = await getVerificationActivities();
+
+        const new_reqs = [];
+
+        // identifier is a mix of different ids
+        for (let identifier in reqs) {
+            if (identifier in req_mapping) {
+                // apparently there's no bulk update in jira
+                const data = reqs[identifier];
+
+                console.log(JSON.stringify(data, null, '\t'));
+
+                console.log(`identifier = ${identifier}`);
+                console.log(`reqs[identifier] = ${reqs[identifier]}`);
+                console.log(`req_mapping[identifier] = ${req_mapping[identifier]}`);
+
+                /*let result = await api.asApp().requestJira(route`/rest/api/3/issue/${req_mapping[identifier]}`, {
+                    method: 'GET',
+                    headers: {
+                      'Accept': 'application/json',
+                      'Content-Type': 'application/json'
+                    }
+                });
+
+                console.log(await result.text());*/
+
+                console.log(`/rest/api/3/issue/${req_mapping[identifier]}`);
+
+                let result = await api.asApp().requestJira(route`/rest/api/3/issue/${req_mapping[identifier]}`, {
+                    method: 'PUT',
+                    headers: {
+                      'Accept': 'application/json',
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                console.log(await result.text());
+            }
+            else {
+                new_reqs.push(reqs[identifier]);
+            }
+        }
+
+        if (new_reqs.length > 0) {
+            const bulk_update_format = {
+                "issueUpdates": new_reqs,
+            };
+
+            // console.log(JSON.stringify(bulk_update_format));
+
+            const result = await bulkCreateCards(JSON.stringify(bulk_update_format));
+            console.log(await result.text());
+        }
+        else {
+            console.log("No new requirements.");
+        }
     }
 
 
     return (
         <Fragment>
             <LinkedReqsText number={linkedReq} />
-            <Button onClick={onButtonPress} text="Initial Valispace Sync"></Button>
+            <Button onClick={updateClick} text="Update from Valispace"></Button>
         </Fragment>
     )
 }
@@ -96,3 +199,46 @@ export const run = render(
         <App />
     </ProjectPage>
 )
+
+export async function issueUpdate(event, context) {
+	console.log('issueUpdate');
+    // console.log('event:');
+    // console.log(JSON.stringify(event, null, '\t'));
+    // console.log('context:');
+    // console.log(JSON.stringify(context, null, '\t'));
+
+    const changes = event.changelog.items;
+
+    for (let change of changes) {
+        // console.log(change);
+
+        if (change.fieldtype == 'jira') {
+            'resolution'
+            if (change.field == 'status' || change.fieldId == 'status') {
+                // console.log("New status...");
+
+                let result = await getIssueValiReq(event.issue.key);
+                const props = await result.json();
+                const req_identifier = props.value.requirement_id;
+
+                const request_data = {
+                    'comment': `<p>${change.fromString} -> ${change.toString}</p>`,
+                };
+
+                console.log(`rest/requirements/${req_identifier}/`);
+                result = await requestValispace(`rest/requirements/${req_identifier}/`, 'PATCH', {}, request_data);
+                console.log(await result.text());
+            } else if (change.field == 'resolution' || change.fieldId == 'resolution') {
+                // console.log("New resolution...");
+            } else if (change.field == 'description' || change.fieldId == 'description') {
+                // console.log("New description...");
+            } else if (change.field == 'summary' || change.fieldId == 'summary') {
+                // console.log("New summary...");
+            } else if (change.field == 'labels' || change.fieldId == 'labels') {
+                // console.log("New labels...");
+            } else {
+                // console.log(`Unparsed change: ${change.field}, ${change.fieldId}`);
+            }
+        }
+    }
+}
