@@ -26,7 +26,8 @@ modules:
             type: number
 
 app:
-  id: ari:cloud:ecosystem::app/9fbcef2d-1c26-42ef-86a6-bd171546e786
+  #id: ari:cloud:ecosystem::app/9d29522d-febd-40a9-a0a1-511c6b09d566
+  id: ari:cloud:ecosystem::app/af315e01-c90c-42b8-a656-2e18b934c30b
 permissions:
   scopes:
     - write:issue:jira
