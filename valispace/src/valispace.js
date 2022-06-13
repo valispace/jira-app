@@ -114,14 +114,16 @@ const getStates = async () => {
 }
 
 const getSpecificState = async (state) => {
-    //Returns only one state with provided name
-    let data = await getStates();
-    // console.log(data)
-    data = data.filter( element => element.name.toLowerCase() === state);
-    if ( data.length == 1 ){
-        return data[0];
+
+    const states = await getStates();
+    let final_id = -1;
+    for (let state of states) {
+        if (state['name'] == state) {
+            final_id = state['id'];
+            break;
+        }
     }
-    throw `Found more than one ${state} state`;
+    return final_id
 }
 
 export const getFilteredRequirements = async () => {
@@ -130,7 +132,7 @@ export const getFilteredRequirements = async () => {
     return data.filter( element => element.state === final_state.id);
 }
 
-export const valiReqIdentifier = (props) => {
+export const generateReqName = (props) => {
     if ('value' in props &&
     'requirement_id' in props.value &&
     'verification_method_id' in props.value &&
@@ -140,6 +142,47 @@ export const valiReqIdentifier = (props) => {
     else {
         return null
     }
+}
+
+const bulkCreateCards = async ( data ) => {
+    return api.asApp().requestJira(route`/rest/api/3/issue/bulk`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: data
+    });
+}
+
+const getValiReqMapping = async (project_name) => {
+    const req_mapping = {};
+
+    let result = await api.asApp().requestJira(route`/rest/api/3/search?jql=project=${project_name} and issue.property[valiReq] is not empty &startAt=0&maxResults=8000&fields=issue`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+    });
+
+    const data = await result.json();
+    console.log(data)
+    for (let issue of data.issues) {
+        // console.log(`Issue: ${issue.key}`);
+
+        result = await getIssueValiReq(issue.key);
+        const props = await result.json();
+        const req_identifier = generateReqName(props);
+
+        // console.log(req_identifier);
+
+        if (req_identifier != null) {
+            req_mapping[req_identifier] = issue.key;
+        }
+    }
+
+    return req_mapping;
 }
 
 export const updateOrCreateCards = async () => {
@@ -198,16 +241,7 @@ export const getVerificationActivities = async () => {
     const new_requirements = {};
 
     // get final state id
-    let result = await requestValispace(`rest/requirements/states/`, 'GET');
-    const states = await result.json();
-    console.log(states);
-    let final_id = -1;
-    for (let state of states) {
-        if (state['name'] == 'Final') {
-            final_id = state['id'];
-            break;
-        }
-    }
+    const final_id = getSpecificState('Final')
 
     // get verification statuses
     // result = await requestValispace('rest/requirements/verification-statuses/', 'GET');
@@ -275,7 +309,7 @@ export const getVerificationActivities = async () => {
                     ]
                 };
 
-                new_requirements[valiReqIdentifier(card_data.properties)] = card_data;
+                new_requirements[generateReqName(card_data.properties)] = card_data;
             }
         }
     }

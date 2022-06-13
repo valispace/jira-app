@@ -9,7 +9,7 @@ import ForgeUI,
     Select,
     TextField } from '@forge/ui';
 import api, { route, storage } from '@forge/api';
-import { getVerificationActivities, requestValispace, updateOrCreateCards, valiReqIdentifier } from './valispace';
+import { getVerificationActivities, requestValispace, updateOrCreateCards, generateReqName } from './valispace';
 
 
 const LoginForm = ({ }) => {
