@@ -1,318 +1,387 @@
-import api, { fetch, storage } from '@forge/api';
-
-
-
-
+import api, { fetch, storage, route } from "@forge/api";
 
 const valispaceAskToken = async (deployment_url, username, passwd) => {
-    //  var dialog = DocumentApp.getUi()
+  //  var dialog = DocumentApp.getUi()
 
-    var tokenUrl = deployment_url + 'o/token/'
-    var data = {
-      grant_type: 'password',
-      client_id: 'ValispaceREST',
-      username: username,
-      password: passwd
-    };
-    const url = new URL(tokenUrl);
+  var tokenUrl = deployment_url + "o/token/";
+  var data = {
+    grant_type: "password",
+    client_id: "ValispaceREST",
+    username: username,
+    password: passwd,
+  };
+  const url = new URL(tokenUrl);
 
-    for (let i in data) {
-        url.searchParams.append(i, data[i]);
-    }
+  for (let i in data) {
+    url.searchParams.append(i, data[i]);
+  }
 
-    var options = {
-        method: 'POST'
-    };
-    var response = await fetch(url.toString(), options);
-    var responseData = await response.json();
-    if (!responseData || !responseData.access_token) {
-        throw new Error(`Login Error`)
-    }
-    var accessToken = responseData.access_token;
-    return accessToken
-}
+  var options = {
+    method: "POST",
+  };
+  var response = await fetch(url.toString(), options);
+  var responseData = await response.json();
+  if (!responseData || !responseData.access_token) {
+    throw new Error(`Login Error`);
+  }
+  var accessToken = responseData.access_token;
+  return accessToken;
+};
 
 const valispaceGetToken = async (deployment_url) => {
-    const connected = await checkValispaceConnexion();
-    console.log(connected)
-    let accessToken = await storage.getSecret("access_token")
-    if (!connected || accessToken === undefined) {
-        const VALISPACE_USERNAME = await storage.getSecret("valispace_username");
-        const VALISPACE_PASSWORD = await storage.getSecret("valispace_password");
-        accessToken = await valispaceAskToken(
-            deployment_url,
-            VALISPACE_USERNAME,
-            VALISPACE_PASSWORD
-        );
+  const connected = await checkValispaceConnexion(deployment_url);
+  let accessToken = await storage.getSecret("access_token");
+  if (!connected || accessToken === undefined) {
+    const VALISPACE_USERNAME = await storage.getSecret("valispace_username");
+    const VALISPACE_PASSWORD = await storage.getSecret("valispace_password");
+    accessToken = await valispaceAskToken(
+      deployment_url,
+      VALISPACE_USERNAME,
+      VALISPACE_PASSWORD
+    );
 
-      storage.setSecret("access_token", accessToken);
-    }
-    return accessToken;
-}
+    storage.setSecret("access_token", accessToken);
+  }
+  return accessToken;
+};
 
- export const checkValispaceConnexion = async () => {
-
-    const response = await requestValispace('project');
-    console.log(response.text())
-    return response.ok;
-
-}
-
-export const requestValispace = async ( path, method = 'GET', url_params = {}, data = null ) => {
-    const VALISPACE_URL = await storage.getSecret('valispace_url');
-    const VALISPACE_PROJECT = await storage.getSecret('valispace_project');
-
-
-    const url = new URL(VALISPACE_URL + path);
-    url.searchParams.append('project', VALISPACE_PROJECT);
-
-    for (let i in url_params) {
-        url.searchParams.append(i, url_params[i]);
-    }
-
-
-    // const VALISPACE_TOKEN = await storage.getSecret("access_token")
-    const VALISPACE_TOKEN = await valispaceGetToken(VALISPACE_URL)
-
+export const checkValispaceConnexion = async (deployment_url) => {
+  //Temp solution, tells it to get the secret stored to try and auth. Otherwise it creates a loop
+  const response = await (async () => {
+    const VALISPACE_TOKEN = await storage.getSecret("access_token");
+    const url = new URL(deployment_url + "/rest/own-profile/");
     const fetch_options = {
-        method: method,
-        headers: {
-            'Authorization': 'Bearer ' + VALISPACE_TOKEN
-        }
+      method: "GET",
+      headers: {
+        Authorization: "Bearer " + VALISPACE_TOKEN,
+      },
     };
+    return fetch(url.toString(), fetch_options);
+  })();
+  return response.ok;
+};
 
-    if (data !== null) {
-        fetch_options['body'] = JSON.stringify(data);
-    }
-    console.log(fetch_options);
+export const requestValispace = async (
+  path,
+  method = "GET",
+  url_params = {},
+  data = null,
+  token = "request"
+) => {
+  const VALISPACE_URL = await storage.getSecret("valispace_url");
+  const VALISPACE_PROJECT = await storage.getSecret("valispace_project");
 
+  const url = new URL(VALISPACE_URL + path);
+  url.searchParams.append("project", VALISPACE_PROJECT);
 
+  for (let i in url_params) {
+    url.searchParams.append(i, url_params[i]);
+  }
 
+  let VALISPACE_TOKEN = await valispaceGetToken(VALISPACE_URL);
 
-    return fetch(
-        url.toString(), fetch_options)
-}
+  const fetch_options = {
+    method: method,
+    headers: {
+      Authorization: "Bearer " + VALISPACE_TOKEN,
+    },
+  };
+
+  if (data !== null) {
+    fetch_options["body"] = JSON.stringify(data);
+  }
+
+  return fetch(url.toString(), fetch_options);
+};
 
 const downloadRequirements = async () => {
-    const result = await requestValispace('rest/requirements', 'GET');
-    return result.json();
-}
+  const result = await requestValispace("rest/requirements", "GET");
+  return result.json();
+};
 
 const downloadVM = async () => {
-    const result = await requestValispace('rest/requirements/verification-methods', 'GET')
-    return result.json();
-}
+  const result = await requestValispace(
+    "rest/requirements/verification-methods",
+    "GET"
+  );
+  return result.json();
+};
 
 const downloadVC = async () => {
-    const result = await requestValispace('', 'GET');
-    return result.json();
-}
+  const result = await requestValispace("", "GET");
+  return result.json();
+};
 
 const getStates = async () => {
-    const result = await requestValispace('rest/requirements/states/', 'GET');
-    return result.json();
-}
+  const result = await requestValispace("rest/requirements/states/", "GET");
+  return result.json();
+};
 
-const getSpecificState = async (state) => {
-
-    const states = await getStates();
-    let final_id = -1;
-    for (let state of states) {
-        if (state['name'] == state) {
-            final_id = state['id'];
-            break;
-        }
+const getSpecificState = async (state_name) => {
+  const states = await getStates();
+  let final_id = -1;
+  for (let state of states) {
+    if (state["name"] == state_name) {
+      final_id = state["id"];
+      break;
     }
-    return final_id
-}
+  }
+  return final_id;
+};
 
-export const getFilteredRequirements = async () => {
-    const data = await downloadRequirements();
-    const final_state = await getSpecificState('final');
-    return data.filter( element => element.state === final_state.id);
-}
+const getFilteredRequirementsByState = async (state_name) => {
+  const data = await downloadRequirements();
+  const final_state = await getSpecificState(state_name);
+  return data.filter((element) => element.state === final_state);
+};
 
-export const generateReqName = (props) => {
-    if ('value' in props &&
-    'requirement_id' in props.value &&
-    'verification_method_id' in props.value &&
-    'component_vms_id' in props.value) {
-        return `${props.value.requirement_id},${props.value.verification_method_id},${props.value.component_vms_id}`;
-    }
-    else {
-        return null
-    }
-}
+const generateReqName = (props) => {
+  if (
+    "value" in props &&
+    "requirement_id" in props.value &&
+    "verification_method_id" in props.value &&
+    "component_vms_id" in props.value
+  ) {
+    return `${props.value.requirement_id}, ${props.value.verification_method_id}, ${props.value.component_vms_id}`;
+  } else {
+    return null;
+  }
+};
 
-const bulkCreateCards = async ( data ) => {
-    return api.asApp().requestJira(route`/rest/api/3/issue/bulk`, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: data
+const bulkCreateCards = async (data) => {
+  return api.asApp().requestJira(route`/rest/api/3/issue/bulk`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+};
+
+const bulkUpdateCards = async (data) => {
+  for (let card of data) {
+    console.log(card);
+    const [[key, value]] = Object.entries(card);
+    console.log(key, value);
+    await updateJiraCard(key, value);
+  }
+};
+
+const updateJiraCard = (issueId, cardData) => {
+  return api.asApp().requestJira(route`/rest/api/3/issue/${issueId}`, {
+    method: "PUT",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(cardData),
+  });
+};
+
+export const updateStatus = async ({ event, change }) => {
+  let req_id = await getIssueValiReq(event.issue.key);
+  const props = await req_id.json();
+  const req_identifier = props.value.requirement_id;
+
+  const request_data = {
+    comment: `<p>${change.fromString} -> ${change.toString}</p>`,
+  };
+
+  req_id = await requestValispace(
+    `rest/requirements/${req_identifier}/`,
+    "PATCH",
+    {},
+    request_data
+  );
+};
+
+const getIssueValiReq = async (issue_key) => {
+  return api
+    .asApp()
+    .requestJira(route`/rest/api/3/issue/${issue_key}/properties/valiReq`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
     });
-}
+};
 
-const getValiReqMapping = async (project_name) => {
-    const req_mapping = {};
+const dictById = (array, index) => {
+  const arrayById = {};
+  for (let item of array) {
+    arrayById[item[index]] = item;
+  }
+  return arrayById;
+};
 
-    let result = await api.asApp().requestJira(route`/rest/api/3/search?jql=project=${project_name} and issue.property[valiReq] is not empty &startAt=0&maxResults=8000&fields=issue`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-    });
+export const getValiReqMapping = async (project_name) => {
+  const req_mapping = {};
 
-    const data = await result.json();
-    console.log(data)
-    for (let issue of data.issues) {
-        // console.log(`Issue: ${issue.key}`);
+  const bodyData = `{
+    "jql": "project=${project_name}",
+    "maxResults": 8000,
+    "fields": [
+      "issue"
+    ],
+    "startAt": 0
+  }`;
 
-        result = await getIssueValiReq(issue.key);
-        const props = await result.json();
-        const req_identifier = generateReqName(props);
+  let result = await api.asApp().requestJira(route`/rest/api/3/search`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: bodyData,
+  });
 
-        // console.log(req_identifier);
+  //   const jql = encodeURIComponent(
+  //     `project=${project_name} and issue.property[valiReq] is not empty `
+  //   );
+  //   let result = await api
+  //     .asApp()
+  //     .requestJira(
+  //       route`/rest/api/3/search?jql=${jql}&startAt=0&maxResults=8000&fields=issue`,
+  //       {
+  //         method: "GET",
+  //         headers: {
+  //           Accept: "application/json",
+  //           "Content-Type": "application/json",
+  //         },
+  //       }
+  //     );
 
-        if (req_identifier != null) {
-            req_mapping[req_identifier] = issue.key;
-        }
+  const data = await result.json();
+  for (let issue of data.issues) {
+    result = await getIssueValiReq(issue.key);
+    const props = await result.json();
+    const req_identifier = generateReqName(props);
+
+    if (req_identifier != null) {
+      req_mapping[req_identifier] = issue.key;
     }
+  }
 
-    return req_mapping;
-}
+  return req_mapping;
+};
 
 export const updateOrCreateCards = async () => {
-    req_mapping = await getValiReqMapping('VTS');
-    const reqs = await getVerificationActivities();
+  const cards_reqs_mapping = await getValiReqMapping("VTS");
+  console.log(cards_reqs_mapping);
+  const validVerificationActivities = await getVerificationActivities();
 
-    const new_reqs = [];
+  const newCards = [];
+  const updateCards = [];
 
-    // identifier is a mix of different ids
-    for (let identifier in reqs) {
-        if (identifier in req_mapping) {
-            // apparently there's no bulk update in jira
-            const data = reqs[identifier];
+  for (let data of validVerificationActivities) {
+    let card_info = generateTaskData(data);
+    let card_id = `${data.requirement["id"]}, ${data.req_vm["id"]}, ${data.cvm["id"]}`;
+    if (card_id in cards_reqs_mapping) {
+      let updateObj = {};
+      let id = cards_reqs_mapping[card_id];
+      updateObj[id] = card_info;
+      updateCards.push(updateObj);
+    } else {
+      newCards.push(card_info);
+    }
+  }
 
-            console.log(JSON.stringify(data, null, '\t'));
+  if (updateCards.length > 0) {
+    const result = await bulkUpdateCards(updateCards);
+    console.log(
+      `Updated ${updateCards.length} requirement${
+        updateCards.length > 1 ? "s" : ""
+      }`
+    );
+  } else {
+    console.log("No requirements to update.");
+  }
 
-            console.log(`identifier = ${identifier}`);
-            console.log(`reqs[identifier] = ${reqs[identifier]}`);
-            console.log(`req_mapping[identifier] = ${req_mapping[identifier]}`);
-
-
-
-            console.log(`/rest/api/3/issue/${req_mapping[identifier]}`);
-
-            let result = await api.asApp().requestJira(route`/rest/api/3/issue/${req_mapping[identifier]}`, {
-                method: 'PUT',
-                headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
-
-            console.log(await result.text());
-        }
-        else {
-            new_reqs.push(reqs[identifier]);
-        }
-}
-
-if (new_reqs.length > 0) {
-    const bulk_update_format = {
-        "issueUpdates": new_reqs,
+  if (newCards.length > 0) {
+    const bulk_create_format = {
+      issueUpdates: newCards,
     };
-
-    // console.log(JSON.stringify(bulk_update_format));
-
-    const result = await bulkCreateCards(JSON.stringify(bulk_update_format));
-    console.log(await result.text());
-}
-else {
+    const result = await bulkCreateCards(bulk_create_format);
+    console.log(
+      `Created ${newCards.length} requirement${newCards.length > 1 ? "s" : ""}`,
+      newCards
+    );
+  } else {
     console.log("No new requirements.");
-}
-}
+  }
+};
+
+const generateTaskData = (data) => {
+  // generate task data
+  console.log(data.vm);
+  const task_text = `${data.requirement["identifier"]}, ${data.vm["name"]}, ${data.component["name"]}`;
+
+  const card_data = {
+    fields: {
+      summary: task_text,
+      project: {
+        key: "VTS",
+      },
+      issuetype: {
+        id: "10001",
+        description: task_text,
+      },
+    },
+    properties: [
+      {
+        key: "valiReq",
+        value: {
+          requirement_id: data.requirement["id"],
+          verification_method_id: data.req_vm["id"],
+          component_vms_id: data.cvm["id"],
+        },
+      },
+    ],
+  };
+  return card_data;
+};
+
 export const getVerificationActivities = async () => {
-    const new_requirements = {};
+  const related_data = [];
 
-    // get final state id
-    const final_id = getSpecificState('Final')
+  const verification_methods = await downloadVM();
 
-    // get verification statuses
-    // result = await requestValispace('rest/requirements/verification-statuses/', 'GET');
-    // const verification_statuses = result.json();
+  // get project requirements
+  const requirements_filtered = await getFilteredRequirementsByState("Final");
+  const vms = await (
+    await requestValispace(`rest/requirements/requirement-vms/`, "GET")
+  ).json();
 
-    result = await requestValispace(`rest/requirements/verification-methods/`, 'GET');
-    const verification_methods = await result.json();
+  const component_vms = await (
+    await requestValispace(`rest/requirements/component-vms/`)
+  ).json();
 
-    const verification_methods_by_id = {};
-    for (let verification_method of verification_methods) {
-        verification_methods_by_id[verification_method['id']] = verification_method;
+  const components = await (await requestValispace(`rest/components/`)).json();
+
+  const verification_methods_by_id = dictById(verification_methods, "id");
+  const vms_by_id = dictById(vms, "id");
+  const component_vms_by_id = dictById(component_vms, "id");
+  const components_by_id = dictById(components, "id");
+
+  for (let requirement of requirements_filtered) {
+    // for all verification methods
+    const vm_ids = requirement["verification_methods"];
+    for (let vm_id of vm_ids) {
+      const req_vm = vms_by_id[vm_id];
+      const vm = verification_methods_by_id[req_vm["method"]];
+
+      // for all components in verification method
+      for (let component_vms_id of req_vm["component_vms"]) {
+        const cvm = component_vms_by_id[component_vms_id];
+        const component = components_by_id[cvm["component"]];
+
+        //Push all the data of the relationship
+        related_data.push({ requirement, req_vm, cvm, component, vm });
+      }
     }
+  }
 
-    // get project requirements
-    result = await requestValispace('rest/requirements/');
-    const project_requirements = await result.json();
-
-    for (let requirement of project_requirements) {
-        // skip requirements that aren't final
-        if (requirement['state'] != final_id) {
-            continue;
-        }
-
-        // for all verification methods
-        const vm_ids = requirement['verification_methods'];
-        for (let vm_id of vm_ids) {
-            result = await requestValispace(`rest/requirements/requirement-vms/`, 'GET', {'ids': vm_id});
-            const vms = await result.json();
-            const vm = vms[0];
-            const verification_method_name = verification_methods_by_id[vm['method']]['name'];
-
-            console.log(`verification_method_name = ${verification_method_name}`);
-
-            // for all components in verification method
-            for (let component_vms_id of vm['component_vms']) {
-                result = await requestValispace(`rest/requirements/component-vms/${component_vms_id}`);
-                const cvms = await result.json();
-                result = await requestValispace(`rest/components/${cvms['component']}`);
-                const component = await result.json();
-
-                // generate task data
-                const task_text = `${requirement['identifier']}, ${verification_method_name}, ${component['name']}`;
-                // console.log(`Imaginary task: ${task_text}`);
-
-                const card_data = {
-                    'fields': {
-                        'summary': task_text,
-                        'project': {
-                            'key': 'VTS'
-                        },
-                        'issuetype': {
-                            'id': '10001',
-                            'description': task_text
-                        },
-                    },
-                    'properties': [
-                        {
-                            'key' : 'valiReq',
-                            'value': {
-                                'requirement_id': requirement['id'],
-                                'verification_method_id': vm_id,
-                                'component_vms_id': component_vms_id,
-                            }
-                        }
-                    ]
-                };
-
-                new_requirements[generateReqName(card_data.properties)] = card_data;
-            }
-        }
-    }
-
-    return new_requirements;
-}
+  return related_data;
+};

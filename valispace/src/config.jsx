@@ -1,5 +1,6 @@
 import ForgeUI,
-{ render,
+{
+    render,
     useState,
     Button,
     ProjectPage,
@@ -7,9 +8,16 @@ import ForgeUI,
     Text,
     Form,
     Select,
-    TextField } from '@forge/ui';
+    TextField
+} from '@forge/ui';
 import api, { route, storage } from '@forge/api';
-import { getVerificationActivities, requestValispace, updateOrCreateCards, generateReqName } from './valispace';
+import {
+    getVerificationActivities,
+    requestValispace,
+    updateOrCreateCards,
+    getValiReqMapping,
+    updateStatus
+} from './valispace';
 
 
 const LoginForm = ({ }) => {
@@ -17,9 +25,9 @@ const LoginForm = ({ }) => {
         return await storage.getSecret(key)
     }
     const [valispace_url, setValispace_url] = useState(getSavedValues("valispace_url") || '');
-    const [valispace_username, setValispace_username] =  useState(getSavedValues("valispace_username") || '');
-    const [valispace_token, setValispace_token] =  useState(getSavedValues("valispace_token") || '');
-    const [valispace_password, setValispace_password] =  useState(getSavedValues("valispace_password") || '');
+    const [valispace_username, setValispace_username] = useState(getSavedValues("valispace_username") || '');
+    const [valispace_token, setValispace_token] = useState(getSavedValues("valispace_token") || '');
+    const [valispace_password, setValispace_password] = useState(getSavedValues("valispace_password") || '');
     const [valispace_project, setValispace_project] = useState(getSavedValues("valispace_project") || '');
     const onSubmit = async (formData) => {
         for (const [key, value] of Object.entries(formData)) {
@@ -32,8 +40,8 @@ const LoginForm = ({ }) => {
         setValispace_project(formData["valispace_project"]);
 
     }
-    const goBack = () => {};
-    const cancel = () => {};
+    const goBack = () => { };
+    const cancel = () => { };
     // The array of additional buttons.
     // These buttons align to the right of the submit button.
     const actionButtons = [
@@ -44,35 +52,28 @@ const LoginForm = ({ }) => {
 
     return (
         <Form onSubmit={onSubmit} actionButtons={actionButtons}>
-            <TextField name="valispace_url" label="Valispace url" isRequired defaultValue={valispace_url}/>
-            <TextField name="valispace_username" label="Username" isRequired defaultValue={valispace_username}/>
+            <TextField name="valispace_url" label="Valispace url" isRequired defaultValue={valispace_url} />
+            <TextField name="valispace_username" label="Username" isRequired defaultValue={valispace_username} />
             {/* <TextField name="valispace_token" label="Token" isRequired defaultValue={valispace_token}/> */}
-            <TextField name="valispace_password" label="Password" type="password" isRequired defaultValue={valispace_password}/>
-            <TextField name="valispace_project" label="Project Id" type="number" isRequired defaultValue={valispace_project}/>
+            <TextField name="valispace_password" label="Password" type="password" isRequired defaultValue={valispace_password} />
+            <TextField name="valispace_project" label="Project Id" type="number" isRequired defaultValue={valispace_project} />
         </Form>
     )
 }
 
-const getIssueValiReq = async ( issue_key ) => {
-    return api.asApp().requestJira(route`/rest/api/3/issue/${issue_key}/properties/valiReq`, {
-        method: 'GET',
-        headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-        }
-    });
-}
+
 
 
 const App = () => {
 
 
-    const updateClick = async () => { updateOrCreateCards()}
+    const updateClick = async () => { await updateOrCreateCards() }
+    // const updateClick = async () => { await getValiReqMapping('VTS') }
 
     // TODO: Disable button if not checkValispaceConnexion
     return (
         <Fragment>
-            <LoginForm/>
+            <LoginForm />
             <Button onClick={updateClick} text="Update from Valispace"></Button>
         </Fragment>
     )
@@ -85,7 +86,7 @@ export const run = render(
 )
 
 export async function issueUpdate(event, context) {
-	console.log('issueUpdate');
+    console.log('issueUpdate');
 
     const changes = event.changelog.items;
 
@@ -96,18 +97,7 @@ export async function issueUpdate(event, context) {
         if (change.fieldtype == 'jira') {
             if (change.field == 'status' || change.fieldId == 'status') {
                 // console.log("New status...");
-
-                let result = await getIssueValiReq(event.issue.key);
-                const props = await result.json();
-                const req_identifier = props.value.requirement_id;
-
-                const request_data = {
-                    'comment': `<p>${change.fromString} -> ${change.toString}</p>`,
-                };
-
-                console.log(`rest/requirements/${req_identifier}/`);
-                result = await requestValispace(`rest/requirements/${req_identifier}/`, 'PATCH', {}, request_data);
-                console.log(await result.text());
+                updateStatus(event, change)
             } else if (change.field == 'resolution' || change.fieldId == 'resolution') {
                 // console.log("New resolution...");
             } else if (change.field == 'description' || change.fieldId == 'description') {
