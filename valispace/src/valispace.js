@@ -281,6 +281,7 @@ export const updateOrCreateCards = async () => {
     if (card_id in cards_reqs_mapping) {
       let updateObj = {};
       let id = cards_reqs_mapping[card_id];
+      delete cards_reqs_mapping[card_id];   // remove card from list
       updateObj[id] = card_info;
       updateCards.push(updateObj);
     } else {
@@ -310,6 +311,29 @@ export const updateOrCreateCards = async () => {
     );
   } else {
     console.log("No new requirements.");
+  }
+
+  // check for deleted cards
+  const deletedReqCards = [];
+  console.log("deleted cards:");
+  for (let card_id in cards_reqs_mapping) {
+    const card = cards_reqs_mapping[card_id];
+
+    console.log(card_id);
+    console.log(card);
+
+    deletedReqCards.push({});
+  }
+
+  if (deletedReqCards.length > 0) {
+    const result = await bulkUpdateCards(deletedReqCards);
+    console.log(
+      `Updated ${deletedReqCards.length} requirement${
+        deletedReqCards.length > 1 ? "s" : ""
+      }`
+    );
+  } else {
+    console.log("No requirements deleted.");
   }
 };
 
