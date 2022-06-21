@@ -8,7 +8,8 @@ import ForgeUI,
     Text,
     Form,
     Select,
-    TextField
+    TextField,
+    useProductContext
 } from '@forge/ui';
 import api, { route, storage } from '@forge/api';
 import {
@@ -66,7 +67,10 @@ const LoginForm = ({ }) => {
 
 const App = () => {
 
-
+    const context = useProductContext();
+    console.log(context);
+    storage.setSecret('jira_project_key', context.platformContext.projectKey);
+    storage.setSecret('jira_project_id', context.platformContext.projectId);
     const updateClick = async () => { await updateOrCreateCards() }
     // const updateClick = async () => { await getValiReqMapping('VTS') }
 
