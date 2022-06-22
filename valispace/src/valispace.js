@@ -125,6 +125,21 @@ const getStates = async () => {
   return result.json();
 };
 
+const getVerificationStatuses = async () => {
+  const result = await requestValispace("rest/requirements/verification-statuses/", "GET");
+  console.log(result);
+  return result.json();
+};
+
+const createVerificationStatuses = async (data) => {
+  const result = await requestValispace(
+    "rest/requirements/verification-statuses/",
+    "PUT",
+    {},
+    data);
+  return result.json();
+};
+
 const getSpecificState = async (state_name) => {
   const states = await getStates();
   let final_id = -1;
@@ -187,6 +202,20 @@ const updateJiraCard = (issueId, cardData) => {
 };
 
 export const updateStatus = async ({ event, change }) => {
+  console.log("updateStatus");
+  console.log("Getting verification status...");
+
+  const verification_statuses = await getVerificationStatuses();
+  console.log(verification_statuses);
+
+  const status_map = {};
+
+  for (let vs of verification_statuses) {
+    status_map[vs.name] = vs.id;
+  }
+
+  console.log(status_map);
+
   let valiReq = await getIssueValiReq(event.issue.key);
   const props = await valiReq.json();
   const req_identifier = props.value.requirement_id;
@@ -201,6 +230,33 @@ export const updateStatus = async ({ event, change }) => {
     {},
     request_data
   );
+
+
+
+  const component_vms_id = props.value.component_vms_id;
+
+  if (change.toString in status_map) {
+    await requestValispace(
+      `rest/requirements/component-vms/${component_vms_id}/`,
+      "PATCH",
+      {},
+      { status: status_map[change.toString] }
+    );
+  }
+  else {
+    console.log("Creating verification status...");
+    let result = await createVerificationStatuses({ name: change.toString });
+    const data = await result.json();
+
+    console.log(JSON.stringify(data));
+
+    await requestValispace(
+      `rest/requirements/component-vms/${component_vms_id}/`,
+      "PATCH",
+      {},
+      { status: data.id }
+    );
+  }
 };
 
 const getIssue = async (issue_key) => {
