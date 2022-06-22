@@ -169,7 +169,6 @@ const bulkCreateCards = async (data) => {
 
 const bulkUpdateCards = async (data) => {
   for (let card of data) {
-    console.log(card);
     const [[key, value]] = Object.entries(card);
     console.log(key, value);
     await updateJiraCard(key, value);
@@ -188,15 +187,15 @@ const updateJiraCard = (issueId, cardData) => {
 };
 
 export const updateStatus = async ({ event, change }) => {
-  let req_id = await getIssueValiReq(event.issue.key);
-  const props = await req_id.json();
+  let valiReq = await getIssueValiReq(event.issue.key);
+  const props = await valiReq.json();
   const req_identifier = props.value.requirement_id;
 
   const request_data = {
     comment: `<p>${change.fromString} -> ${change.toString}</p>`,
   };
 
-  req_id = await requestValispace(
+  valiReq = await requestValispace(
     `rest/requirements/${req_identifier}/`,
     "PATCH",
     {},
@@ -248,11 +247,15 @@ const dictById = (array, index) => {
   return arrayById;
 };
 
-export const getValiReqMapping = async (project_name) => {
-  const req_mapping = {};
+const getProjectKey = () => {
+  return storage.getSecret("jira_project_key");
+};
 
+export const getValiReqMapping = async () => {
+  const req_mapping = {};
+  const project_key = await getProjectKey();
   const bodyData = `{
-    "jql": "project=${project_name}",
+    "jql": "project=${project_key}",
     "maxResults": 8000,
     "fields": [
       "issue"
@@ -300,15 +303,17 @@ export const getValiReqMapping = async (project_name) => {
 };
 
 export const updateOrCreateCards = async () => {
-  const cards_reqs_mapping = await getValiReqMapping("VTS");
-  console.log(cards_reqs_mapping);
+  const cards_reqs_mapping = await getValiReqMapping();
   const validVerificationActivities = await getVerificationActivities();
+
+  const project_key = await getProjectKey();
+  const issueTypeId = await getIssueTypeID("Task");
 
   const newCards = [];
   const updateCards = [];
 
   for (let data of validVerificationActivities) {
-    let card_info = generateTaskData(data);
+    let card_info = generateTaskData(data, project_key, issueTypeId);
     let card_id = `${data.requirement["id"]}, ${data.req_vm["id"]}, ${data.cvm["id"]}`;
     if (card_id in cards_reqs_mapping) {
       let updateObj = {};
@@ -384,19 +389,38 @@ export const updateOrCreateCards = async () => {
   }
 };
 
-const generateTaskData = (data) => {
-  // generate task data
-  console.log(data.vm);
-  const task_text = `${data.requirement["identifier"]}, ${data.vm["name"]}, ${data.component["name"]}`;
+const getIssueTypeID = async (name) => {
+  let id = 0;
+  const projectId = await storage.getSecret("jira_project_id");
+  console.log(projectId);
+  const response = await api
+    .asApp()
+    .requestJira(route`/rest/api/3/issuetype/project?projectId=${projectId}`, {
+      headers: {
+        Accept: "application/json",
+      },
+    });
+  const issueTypes = await response.json();
+  for (const issueType of issueTypes) {
+    if (issueType.name === name || issueType === 0) {
+      id = issueType.id;
+    }
+  }
+  return id;
+};
 
+const generateTaskData = (data, project_key, issueTypeId) => {
+  // generate task data
+  console.log(issueTypeId);
+  const task_text = `${data.requirement["identifier"]}, ${data.vm["name"]}, ${data.component["name"]}`;
   const card_data = {
     fields: {
       summary: task_text,
       project: {
-        key: "VTS",
+        key: project_key,
       },
       issuetype: {
-        id: "10001",
+        id: issueTypeId,
         description: task_text,
       },
     },
