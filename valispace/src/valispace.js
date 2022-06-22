@@ -68,17 +68,25 @@ export const requestValispace = async (
   data = null,
   token = "request"
 ) => {
-  const VALISPACE_URL = await storage.getSecret("valispace_url");
+  let valispace_url = await storage.getSecret("valispace_url");
+  if (valispace_url[valispace_url.length-1] != '/') {
+    valispace_url += '/';
+  }
+
+  if (valispace_url.substr(0, 4) != 'http') {
+    valispace_url = 'https://' + valispace_url;
+  }
+
   const VALISPACE_PROJECT = await storage.getSecret("valispace_project");
 
-  const url = new URL(VALISPACE_URL + path);
+  const url = new URL(valispace_url + path);
   url.searchParams.append("project", VALISPACE_PROJECT);
 
   for (let i in url_params) {
     url.searchParams.append(i, url_params[i]);
   }
 
-  let VALISPACE_TOKEN = await valispaceGetToken(VALISPACE_URL);
+  let VALISPACE_TOKEN = await valispaceGetToken(valispace_url);
 
   const fetch_options = {
     method: method,
