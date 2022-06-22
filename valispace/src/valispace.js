@@ -69,7 +69,7 @@ export const requestValispace = async (
   token = "request"
 ) => {
   let valispace_url = await storage.getSecret("valispace_url");
-  if (valispace_url[valispace_url.length-1] != '/') {
+  if (valispace_url[valispace_url.length - 1] != '/') {
     valispace_url += '/';
   }
 
@@ -204,11 +204,35 @@ export const updateStatus = async ({ event, change }) => {
   );
 };
 
+const getIssue = async (issue_key) => {
+  return api
+    .asApp()
+    .requestJira(route`/rest/api/3/issue/${issue_key}`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+  });
+};
+
 const getIssueValiReq = async (issue_key) => {
   return api
     .asApp()
     .requestJira(route`/rest/api/3/issue/${issue_key}/properties/valiReq`, {
       method: "GET",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    });
+};
+
+const removeIssueValiReq = async (issue_key) => {
+  return api
+    .asApp()
+    .requestJira(route`/rest/api/3/issue/${issue_key}/properties/valiReq`, {
+      method: "DELETE",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
@@ -325,12 +349,27 @@ export const updateOrCreateCards = async () => {
   const deletedReqCards = [];
   console.log("deleted cards:");
   for (let card_id in cards_reqs_mapping) {
-    const card = cards_reqs_mapping[card_id];
+    const card_req = cards_reqs_mapping[card_id];
+    console.log("card_id", card_id);
+    console.log("card_req", card_req);
 
-    console.log(card_id);
-    console.log(card);
+    const result = await getIssue(card_req);
+    const issue = await result.json();
+    console.log("Issue:");
+    console.log(JSON.stringify(issue, null, '\t'));
 
-    deletedReqCards.push({});
+    deletedReqCards.push({
+	    "key": card_req,
+	    "fields": {
+		    "status": {
+			    "id": "10002"
+        }
+      }
+    });
+
+    const r1 = await removeIssueValiReq(card_req);
+    const text = await r1.text();
+    console.log(text);
   }
 
   if (deletedReqCards.length > 0) {
