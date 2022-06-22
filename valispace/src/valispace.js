@@ -127,14 +127,13 @@ const getStates = async () => {
 
 const getVerificationStatuses = async () => {
   const result = await requestValispace("rest/requirements/verification-statuses/", "GET");
-  console.log(result);
   return result.json();
 };
 
 const createVerificationStatuses = async (data) => {
   const result = await requestValispace(
     "rest/requirements/verification-statuses/",
-    "PUT",
+    "POST",
     {},
     data);
   return result.json();
@@ -185,7 +184,6 @@ const bulkCreateCards = async (data) => {
 const bulkUpdateCards = async (data) => {
   for (let card of data) {
     const [[key, value]] = Object.entries(card);
-    console.log(key, value);
     await updateJiraCard(key, value);
   }
 };
@@ -201,20 +199,14 @@ const updateJiraCard = (issueId, cardData) => {
   });
 };
 
-export const updateStatus = async ({ event, change }) => {
-  console.log("updateStatus");
+export const updateStatus = async ( event, change ) => {
   console.log("Getting verification status...");
-
   const verification_statuses = await getVerificationStatuses();
-  console.log(verification_statuses);
-
   const status_map = {};
 
   for (let vs of verification_statuses) {
     status_map[vs.name] = vs.id;
   }
-
-  console.log(status_map);
 
   let valiReq = await getIssueValiReq(event.issue.key);
   const props = await valiReq.json();
@@ -231,8 +223,6 @@ export const updateStatus = async ({ event, change }) => {
     request_data
   );
 
-
-
   const component_vms_id = props.value.component_vms_id;
 
   if (change.toString in status_map) {
@@ -244,11 +234,8 @@ export const updateStatus = async ({ event, change }) => {
     );
   }
   else {
-    console.log("Creating verification status...");
-    let result = await createVerificationStatuses({ name: change.toString });
-    const data = await result.json();
-
-    console.log(JSON.stringify(data));
+    console.log("Creating new verification status...");
+    let data = await createVerificationStatuses({ name: change.toString, abbr: change.toString[0] });
 
     await requestValispace(
       `rest/requirements/component-vms/${component_vms_id}/`,
@@ -412,12 +399,9 @@ export const updateOrCreateCards = async () => {
   for (let card_id in cards_reqs_mapping) {
     const card_req = cards_reqs_mapping[card_id];
     console.log("card_id", card_id);
-    console.log("card_req", card_req);
 
     const result = await getIssue(card_req);
     const issue = await result.json();
-    console.log("Issue:");
-    console.log(JSON.stringify(issue, null, '\t'));
 
     deletedReqCards.push({
 	    "key": card_req,
@@ -430,7 +414,6 @@ export const updateOrCreateCards = async () => {
 
     const r1 = await removeIssueValiReq(card_req);
     const text = await r1.text();
-    console.log(text);
   }
 
   if (deletedReqCards.length > 0) {
@@ -448,7 +431,6 @@ export const updateOrCreateCards = async () => {
 const getIssueTypeID = async (name) => {
   let id = 0;
   const projectId = await storage.getSecret("jira_project_id");
-  console.log(projectId);
   const response = await api
     .asApp()
     .requestJira(route`/rest/api/3/issuetype/project?projectId=${projectId}`, {
@@ -467,7 +449,6 @@ const getIssueTypeID = async (name) => {
 
 const generateTaskData = (data, project_key, issueTypeId) => {
   // generate task data
-  console.log(issueTypeId);
   const task_text = `${data.requirement["identifier"]}, ${data.vm["name"]}, ${data.component["name"]}`;
   const card_data = {
     fields: {
