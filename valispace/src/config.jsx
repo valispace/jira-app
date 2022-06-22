@@ -89,21 +89,19 @@ export const run = render(
     </ProjectPage>
 )
 
-export async function issueUpdate(event, context) {
+export async function issueUpdate(event, _context) {
     console.log('issueUpdate');
-
     const changes = event.changelog.items;
 
-
     for (let change of changes) {
-
-
         if (change.fieldtype == 'jira') {
             if (change.field == 'status' || change.fieldId == 'status') {
-                // console.log("New status...");
-                updateStatus(event, change)
+                console.log("New status...");
+                // console.log(event, change);
+                await updateStatus(event, change);
             } else if (change.field == 'resolution' || change.fieldId == 'resolution') {
                 // console.log("New resolution...");
+                // console.log(event, change);
             } else if (change.field == 'description' || change.fieldId == 'description') {
                 // console.log("New description...");
             } else if (change.field == 'summary' || change.fieldId == 'summary') {
