@@ -103,7 +103,7 @@ export const requestValispace = async (
 };
 
 const downloadRequirements = async () => {
-	const result = await requestValispace("rest/requirements", "GET");
+	const result = await requestValispace("rest/requirements?clean_text=text", "GET");
 	return result.json();
 };
 
@@ -456,6 +456,22 @@ const generateTaskData = (data, project_key, issueTypeId) => {
 				id: issueTypeId,
 				description: task_text,
 			},
+			description: {
+
+				type: "doc",
+				version: 1,
+				content: [
+					{
+						type: "paragraph",
+						content: [
+							{
+								type: "text",
+								text: data.requirement['text']
+							}
+						]
+					}
+				]
+			}
 		},
 		properties: [
 			{
