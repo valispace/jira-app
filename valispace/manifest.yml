@@ -1,35 +1,36 @@
 modules:
-    trigger:
-      - key: issue-updated-event
-        function: update
-        events:
-          - avi:jira:updated:issue
-    jira:projectPage:
-      - key: valispace-sync-config-page
-        function: config
-        title: Valispace
-    function:
-      - key: config
-        handler: config.run
-      - key: update
-        handler: config.issueUpdate
-    jira:entityProperty:
-      - key: "vali-req-indexing"
-        entityType: "issue"
-        propertyKey: valiReq
-        values:
-          - path: requirement_id
-            type: number
-          - path: verification_method_id
-            type: number
-          - path: component_vms_id
-            type: number
+  trigger:
+    - key: issue-updated-event
+      function: update
+      events:
+        - avi:jira:updated:issue
+  jira:projectPage:
+    - key: valispace-sync-config-page
+      function: config
+      title: Valispace
+  function:
+    - key: config
+      handler: config.run
+    - key: update
+      handler: config.issueUpdate
+  jira:entityProperty:
+    - key: "vali-req-indexing"
+      entityType: "issue"
+      propertyKey: valiReq
+      values:
+        - path: requirement_id
+          type: number
+        - path: verification_method_id
+          type: number
+        - path: component_vms_id
+          type: number
 
 app:
   #id: ari:cloud:ecosystem::app/9d29522d-febd-40a9-a0a1-511c6b09d566
   id: ari:cloud:ecosystem::app/af315e01-c90c-42b8-a656-2e18b934c30b
 permissions:
   scopes:
+    - manage:jira-configuration
     - write:issue:jira
     - write:comment:jira
     - write:comment.property:jira

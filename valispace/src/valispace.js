@@ -396,14 +396,15 @@ export const updateOrCreateCards = async () => {
 		const card_req = cards_reqs_mapping[card_id];
 		console.log("card_id", card_id);
 
-		const result = await getIssue(card_req);
-		const issue = await result.json();
+		// const result = await getIssue(card_req);
+		// const issue = await result.json();
+		const doneStatus = await getWorkflowStatus();
 
 		deletedReqCards.push({
 			"key": card_req,
 			"fields": {
 				"status": {
-					"id": "10002"
+					"id": doneStatus
 				}
 			}
 		});
@@ -442,6 +443,21 @@ const getIssueTypeID = async (name) => {
 	}
 	return id;
 };
+
+const getWorkflowStatus = async (category = "DONE") => {
+
+	const projectId = await storage.getSecret("jira_project_id");
+	const response = await api
+		.asApp()
+		.requestJira(route`/rest/api/3/statuses/search?projectId=${projectId}&statusCategory=${category}`, {
+			headers: {
+				Accept: "application/json",
+			},
+		});
+	const statuses = await response.json();
+	console.log(statuses);
+	return statuses.values[0].id
+}
 
 const generateTaskData = (data, project_key, issueTypeId) => {
 	// generate task data
