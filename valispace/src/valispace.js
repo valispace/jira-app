@@ -29,8 +29,8 @@ const valispaceAskToken = async (deployment_url, username, passwd) => {
 };
 
 const valispaceGetToken = async (deployment_url) => {
-	const connected = await checkValispaceConnexion(deployment_url);
 	let accessToken = await storage.getSecret("access_token");
+	const connected = await checkValispaceConnexion(deployment_url, accessToken);
 	if (!connected || accessToken === undefined) {
 		const VALISPACE_USERNAME = await storage.getSecret("valispace_username");
 		const VALISPACE_PASSWORD = await storage.getSecret("valispace_password");
@@ -45,11 +45,11 @@ const valispaceGetToken = async (deployment_url) => {
 	return accessToken;
 };
 
-export const checkValispaceConnexion = async (deployment_url) => {
+export const checkValispaceConnexion = async (deployment_url, accessToken) => {
 	//Temp solution, tells it to get the secret stored to try and auth. Otherwise it creates a loop
 	const response = await (async () => {
-		const VALISPACE_TOKEN = await storage.getSecret("access_token");
-		const url = new URL(deployment_url + "/rest/own-profile/");
+		const VALISPACE_TOKEN = accessToken;
+		const url = new URL(deployment_url + "rest/own-profile/");
 		const fetch_options = {
 			method: "GET",
 			headers: {
