@@ -377,13 +377,22 @@ export const updateOrCreateCards = async () => {
 	}
 
 	if (newCards.length > 0) {
-		const bulk_create_format = {
-			issueUpdates: newCards,
+		let bulk_create_format = {};
+		let result;
+		const JIRA_LIMIT = 50
+		if (newCards.length > JIRA_LIMIT) {
+			for (let i = 0; i < newCards.length; i += JIRA_LIMIT) {
+
+				bulk_create_format = {
+					issueUpdates: newCards.slice(i, i + JIRA_LIMIT),
 		};
-		const result = await bulkCreateCards(bulk_create_format);
+				result = await bulkCreateCards(bulk_create_format);
+				console.log(result);
+			}
+		}
 		console.log(
 			`Created ${newCards.length} requirement${newCards.length > 1 ? "s" : ""}`,
-			newCards
+			result
 		);
 	} else {
 		console.log("No new requirements.");
