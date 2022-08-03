@@ -121,7 +121,7 @@ const downloadVC = async () => {
 };
 
 const getStates = async () => {
-	const result = await requestValispace("rest/requirements/states/", "GET");
+	const result = await requestValispace("rest/vstates/", "GET");
 	return result.json();
 };
 
