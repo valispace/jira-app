@@ -29,8 +29,8 @@ const valispaceAskToken = async (deployment_url, username, passwd) => {
 };
 
 const valispaceGetToken = async (deployment_url) => {
-	const connected = await checkValispaceConnexion(deployment_url);
 	let accessToken = await storage.getSecret("access_token");
+	const connected = await checkValispaceConnexion(deployment_url, accessToken);
 	if (!connected || accessToken === undefined) {
 		const VALISPACE_USERNAME = await storage.getSecret("valispace_username");
 		const VALISPACE_PASSWORD = await storage.getSecret("valispace_password");
@@ -45,11 +45,11 @@ const valispaceGetToken = async (deployment_url) => {
 	return accessToken;
 };
 
-export const checkValispaceConnexion = async (deployment_url) => {
+export const checkValispaceConnexion = async (deployment_url, accessToken) => {
 	//Temp solution, tells it to get the secret stored to try and auth. Otherwise it creates a loop
 	const response = await (async () => {
-		const VALISPACE_TOKEN = await storage.getSecret("access_token");
-		const url = new URL(deployment_url + "/rest/own-profile/");
+		const VALISPACE_TOKEN = accessToken;
+		const url = new URL(deployment_url + "rest/own-profile/");
 		const fetch_options = {
 			method: "GET",
 			headers: {
@@ -121,7 +121,7 @@ const downloadVC = async () => {
 };
 
 const getStates = async () => {
-	const result = await requestValispace("rest/requirements/states/", "GET");
+	const result = await requestValispace("rest/vstates/", "GET");
 	return result.json();
 };
 
@@ -159,12 +159,11 @@ const getFilteredRequirementsByState = async (state_name) => {
 
 const generateReqName = (props) => {
 	if (
-		"value" in props &&
-		"requirement_id" in props.value &&
-		"verification_method_id" in props.value &&
-		"component_vms_id" in props.value
+		"requirement_id" in props &&
+		"verification_method_id" in props &&
+		"component_vms_id" in props
 	) {
-		return `${props.value.requirement_id}, ${props.value.verification_method_id}, ${props.value.component_vms_id}`;
+		return `${props.requirement_id}, ${props.verification_method_id}, ${props.component_vms_id}`;
 	} else {
 		return null;
 	}
@@ -199,7 +198,7 @@ const updateJiraCard = (issueId, cardData) => {
 	});
 };
 
-export const updateStatus = async ( event, change ) => {
+export const updateStatus = async (event, change) => {
 	console.log("Getting verification status...");
 	const verification_statuses = await getVerificationStatuses();
 	const status_map = {};
@@ -210,18 +209,7 @@ export const updateStatus = async ( event, change ) => {
 
 	let valiReq = await getIssueValiReq(event.issue.key);
 	const props = await valiReq.json();
-	/*const req_identifier = props.value.requirement_id;
 
-	const request_data = {
-		comment: `<p>${change.fromString} -> ${change.toString}</p>`,
-	};
-
-	valiReq = await requestValispace(
-		`rest/requirements/${req_identifier}/`,
-		"PATCH",
-		{},
-		request_data
-	);*/
 
 	let new_status;
 
@@ -290,19 +278,28 @@ const getProjectKey = () => {
 	return storage.getSecret("jira_project_key");
 };
 
+
+
 export const getValiReqMapping = async () => {
 	const req_mapping = {};
 	const project_key = await getProjectKey();
-	const bodyData = `{
+	let i = 0, data, props, req_identifier, result, bodyData;
+	while (true) {
+
+		bodyData = `{
 		"jql": "project=${project_key}",
-		"maxResults": 8000,
+			"maxResults": 100,
 		"fields": [
-			"issue"
+			"summary",
+			"description"
 		],
-		"startAt": 0
+			"startAt": ${100 * i},
+		"properties": [
+			"valiReq"
+		]
 	}`;
 
-	let result = await api.asApp().requestJira(route`/rest/api/3/search`, {
+		result = await api.asApp().requestJira(route`/rest/api/3/search`, {
 		method: "POST",
 		headers: {
 			Accept: "application/json",
@@ -311,31 +308,23 @@ export const getValiReqMapping = async () => {
 		body: bodyData,
 	});
 
-	//   const jql = encodeURIComponent(
-	//     `project=${project_name} and issue.property[valiReq] is not empty `
-	//   );
-	//   let result = await api
-	//     .asApp()
-	//     .requestJira(
-	//       route`/rest/api/3/search?jql=${jql}&startAt=0&maxResults=8000&fields=issue`,
-	//       {
-	//         method: "GET",
-	//         headers: {
-	//           Accept: "application/json",
-	//           "Content-Type": "application/json",
-	//         },
-	//       }
-	//     );
+		console.log("Requested query")
+		data = await result.json();
 
-	const data = await result.json();
+		if (data.issues.length == 0) { break; }
+
 	for (let issue of data.issues) {
-		result = await getIssueValiReq(issue.key);
-		const props = await result.json();
-		const req_identifier = generateReqName(props);
-
+		// result = await getIssueValiReq(issue.key);
+			props = issue.properties['valiReq'];
+			req_identifier = generateReqName(props);
 		if (req_identifier != null) {
-			req_mapping[req_identifier] = issue.key;
+			req_mapping[req_identifier] = issue;
+			} else {
+
+				console.log("NOT FOUND IDENTIFIER");
 		}
+	}
+		i++;
 	}
 
 	return req_mapping;
@@ -355,9 +344,13 @@ export const updateOrCreateCards = async () => {
 		let card_info = generateTaskData(data, project_key, issueTypeId);
 		let card_id = `${data.requirement["id"]}, ${data.req_vm["id"]}, ${data.cvm["id"]}`;
 		if (card_id in cards_reqs_mapping) {
+			let oldCardData = cards_reqs_mapping[card_id];
+			delete cards_reqs_mapping[card_id];// remove card from list
+			console.log(oldCardData);
+			let id = oldCardData.key;
+
+			if (oldCardData.properties['valiReq'].data_used !== card_info['properties'][0].value.data_used) {
 			let updateObj = {};
-			let id = cards_reqs_mapping[card_id];
-			delete cards_reqs_mapping[card_id];   // remove card from list
 			updateObj[id] = card_info;
 			updateCards.push(updateObj);
 		} else {
@@ -377,13 +370,22 @@ export const updateOrCreateCards = async () => {
 	}
 
 	if (newCards.length > 0) {
-		const bulk_create_format = {
-			issueUpdates: newCards,
+		let bulk_create_format = {};
+		let result;
+		const JIRA_LIMIT = 50
+		if (newCards.length > JIRA_LIMIT) {
+			for (let i = 0; i < newCards.length; i += JIRA_LIMIT) {
+
+				bulk_create_format = {
+					issueUpdates: newCards.slice(i, i + JIRA_LIMIT),
 		};
-		const result = await bulkCreateCards(bulk_create_format);
+				result = await bulkCreateCards(bulk_create_format);
+				console.log(result);
+			}
+		}
 		console.log(
 			`Created ${newCards.length} requirement${newCards.length > 1 ? "s" : ""}`,
-			newCards
+			result
 		);
 	} else {
 		console.log("No new requirements.");
@@ -496,6 +498,12 @@ const generateTaskData = (data, project_key, issueTypeId) => {
 					requirement_id: data.requirement["id"],
 					verification_method_id: data.req_vm["id"],
 					component_vms_id: data.cvm["id"],
+					data_used: JSON.stringify({
+						requirement: data.requirement["id"],
+						req_vm: data.req_vm["id"],
+						component_vms_id: data.cvm["id"],
+						description: data.requirement['text']
+					})
 				},
 			},
 		],

@@ -24,6 +24,8 @@ modules:
           type: number
         - path: component_vms_id
           type: number
+        - path: data_used
+          type: string
 
 app:
   #id: ari:cloud:ecosystem::app/9d29522d-febd-40a9-a0a1-511c6b09d566
