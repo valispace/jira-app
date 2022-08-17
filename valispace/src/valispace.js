@@ -350,9 +350,10 @@ export const updateOrCreateCards = async () => {
 			let id = oldCardData.key;
 
 			if (oldCardData.properties['valiReq'].data_used !== card_info['properties'][0].value.data_used) {
-			let updateObj = {};
-			updateObj[id] = card_info;
-			updateCards.push(updateObj);
+				let updateObj = {};
+				updateObj[id] = card_info;
+				updateCards.push(updateObj);
+			}
 		} else {
 			newCards.push(card_info);
 		}
@@ -373,16 +374,14 @@ export const updateOrCreateCards = async () => {
 		let bulk_create_format = {};
 		let result;
 		const JIRA_LIMIT = 50
-		if (newCards.length > JIRA_LIMIT) {
-			for (let i = 0; i < newCards.length; i += JIRA_LIMIT) {
+		for (let i = 0; i < newCards.length; i += JIRA_LIMIT) {
 
-				bulk_create_format = {
-					issueUpdates: newCards.slice(i, i + JIRA_LIMIT),
-		};
-				result = await bulkCreateCards(bulk_create_format);
-				console.log(result);
-			}
+			bulk_create_format = {
+				issueUpdates: newCards.slice(i, i + JIRA_LIMIT),
+			};
+			result = await bulkCreateCards(bulk_create_format);
 		}
+
 		console.log(
 			`Created ${newCards.length} requirement${newCards.length > 1 ? "s" : ""}`,
 			result
