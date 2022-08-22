@@ -159,6 +159,7 @@ const getFilteredRequirementsByState = async (state_name) => {
 
 const generateReqName = (props) => {
 	if (
+		props &&
 		"requirement_id" in props &&
 		"verification_method_id" in props &&
 		"component_vms_id" in props
@@ -234,12 +235,12 @@ const getIssue = async (issue_key) => {
 	return api
 		.asApp()
 		.requestJira(route`/rest/api/3/issue/${issue_key}`, {
-		method: "GET",
-		headers: {
-			Accept: "application/json",
-			"Content-Type": "application/json",
-		},
-	});
+			method: "GET",
+			headers: {
+				Accept: "application/json",
+				"Content-Type": "application/json",
+			},
+		});
 };
 
 const getIssueValiReq = async (issue_key) => {
@@ -300,30 +301,30 @@ export const getValiReqMapping = async () => {
 	}`;
 
 		result = await api.asApp().requestJira(route`/rest/api/3/search`, {
-		method: "POST",
-		headers: {
-			Accept: "application/json",
-			"Content-Type": "application/json",
-		},
-		body: bodyData,
-	});
+			method: "POST",
+			headers: {
+				Accept: "application/json",
+				"Content-Type": "application/json",
+			},
+			body: bodyData,
+		});
 
 		console.log("Requested query")
 		data = await result.json();
 
 		if (data.issues.length == 0) { break; }
 
-	for (let issue of data.issues) {
-		// result = await getIssueValiReq(issue.key);
+		for (let issue of data.issues) {
+			// result = await getIssueValiReq(issue.key);
 			props = issue.properties['valiReq'];
 			req_identifier = generateReqName(props);
-		if (req_identifier != null) {
-			req_mapping[req_identifier] = issue;
+			if (req_identifier != null) {
+				req_mapping[req_identifier] = issue;
 			} else {
 
 				console.log("NOT FOUND IDENTIFIER");
+			}
 		}
-	}
 		i++;
 	}
 
@@ -390,41 +391,29 @@ export const updateOrCreateCards = async () => {
 		console.log("No new requirements.");
 	}
 
-	// check for deleted cards
-	const deletedReqCards = [];
-	console.log("deleted cards:");
-	for (let card_id in cards_reqs_mapping) {
-		const card_req = cards_reqs_mapping[card_id];
-		console.log("card_id", card_id);
-
-		// const result = await getIssue(card_req);
-		// const issue = await result.json();
-		const doneStatus = await getWorkflowStatus();
-
-		deletedReqCards.push({
-			"key": card_req,
-			"fields": {
-				"status": {
-					"id": doneStatus
-				}
-			}
-		});
-
-		const r1 = await removeIssueValiReq(card_req);
-		const text = await r1.text();
-	}
-
-	if (deletedReqCards.length > 0) {
-		const result = await bulkUpdateCards(deletedReqCards);
-		console.log(
-			`Updated ${deletedReqCards.length} requirement${
-				deletedReqCards.length > 1 ? "s" : ""
-			}`
-		);
-	} else {
-		console.log("No requirements deleted.");
-	}
+	await handleDeletedVerificationActivities(cards_reqs_mapping);
 };
+
+const handleDeletedVerificationActivities = async (cards_reqs_mapping) => {
+
+	const nDeleteActivities = Object.keys(cards_reqs_mapping).length;
+
+	if (!nDeleteActivities) {
+		console.log("No activities deleted.");
+		return;
+	}
+
+	console.log(`Deleting ${nDeleteActivities} activities.`)
+
+	for (let card_id in cards_reqs_mapping) {
+		const issueKey = cards_reqs_mapping[card_id].key;
+
+		console.log("Removing activity", card_id, ". Transitioning issue", issueKey);
+
+		await removeIssueValiReq(issueKey);
+		await transitionIssueTo(issueKey, 'done');
+	}
+}
 
 const getIssueTypeID = async (name) => {
 	let id = 0;
@@ -445,19 +434,83 @@ const getIssueTypeID = async (name) => {
 	return id;
 };
 
-const getWorkflowStatus = async (category = "DONE") => {
+/**
+ * @param {number|string} issueIdOrKey 
+ * @param {string} statusCategoryKey
+ */
+ const transitionIssueTo = async (issueIdOrKey, statusCategoryKey) => {
 
-	const projectId = await storage.getSecret("jira_project_id");
-	const response = await api
-		.asApp()
-		.requestJira(route`/rest/api/3/statuses/search?projectId=${projectId}&statusCategory=${category}`, {
-			headers: {
-				Accept: "application/json",
-			},
-		});
-	const statuses = await response.json();
-	console.log(statuses);
-	return statuses.values[0].id
+	const transitionId = await getTransitionId(issueIdOrKey, statusCategoryKey);
+	if (!transitionId) {
+		console.log(`The transition to ${statusCategoryKey} was not found for the issue ${issueIdOrKey}, adding a comment to the issue`);
+		await addCommentToJiraCard(issueIdOrKey, `Unable to move this issue since the transition to '${statusCategoryKey}' was not found`);
+		return;
+	}
+
+	await api.asApp().requestJira(route`/rest/api/3/issue/${issueIdOrKey}/transitions`, {
+		method: "POST",
+		headers: {
+			"Accept": "application/json",
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({ transition: { id: transitionId } }),
+	});
+};
+
+/**
+ * @param {number|string} issueIdOrKey
+ * @param {string} statusCategoryKey 
+ */
+const getTransitionId = async (issueIdOrKey, statusCategoryKey) => {
+	const transitions = await getIssueTransitions(issueIdOrKey);
+	const transition = transitions.find(t => t.to.statusCategory.key === statusCategoryKey);
+	return transition?.id;
+}
+
+/**
+ * @param {number|string} issueIdOrKey
+ * @returns {Promise<object[]>}
+ */
+const getIssueTransitions = async (issueIdOrKey) => {
+	const response = await api.asApp().requestJira(route`/rest/api/3/issue/${issueIdOrKey}/transitions`, {
+		headers: { 'Accept': 'application/json' }
+	});
+	const body = await response.json();
+	return body?.transitions ?? [];
+}
+
+/**
+ * @param {number|string} issueIdOrKey 
+ * @param {string} comment
+ */
+const addCommentToJiraCard = (issueIdOrKey, comment) => {
+
+	const requestBody = {
+		"body": {
+			"type": "doc",
+			"version": 1,
+			"content": [
+				{
+					"type": "paragraph",
+					"content": [
+						{
+							"type": "text",
+							"text": comment
+						}
+					]
+				}
+			]
+		}
+	};
+
+	return api.asApp().requestJira(route`/rest/api/3/issue/${issueIdOrKey}/comment`, {
+		method: 'POST',
+		headers: {
+			'Accept': 'application/json',
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify(requestBody)
+	});
 }
 
 const generateTaskData = (data, project_key, issueTypeId) => {
