@@ -18,7 +18,7 @@
     "@atlaskit/editor-markdown-transformer": "^4.2.7",
     "@forge/api": "^2.6.1",
     "@forge/ui": "1.1.0",
-    "@xmldom/xmldom": "^0.8.2",
+    "@xmldom/xmldom": "^0.8.3",
     "prosemirror-model": "^1.16.1"
   }
 }
