@@ -15,8 +15,8 @@
   "dependencies": {
     "@atlaskit/adf-schema": "^23.0.0",
     "@atlaskit/editor-json-transformer": "^8.7.4",
-    "@atlaskit/editor-markdown-transformer": "^4.2.7",
-    "@forge/api": "^2.6.1",
+    "@atlaskit/editor-markdown-transformer": "^4.2.17",
+    "@forge/api": "^2.10.0",
     "@forge/ui": "1.1.0",
     "@xmldom/xmldom": "^0.8.4",
     "prosemirror-model": "^1.16.1"
